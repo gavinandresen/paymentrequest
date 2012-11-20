@@ -1,0 +1,6 @@
+certs
+private
+index.txt
+index.txt.attr
+*.old
+serial

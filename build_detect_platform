@@ -1,0 +1,66 @@
+#!/bin/sh
+#
+# Detects OS we're compiling on and outputs a file specified by the first
+# argument, which in turn gets read while processing Makefile.
+#
+# The output will set the following variables:
+#   CXX                         C++ Compiler path
+#   PLATFORM_LDFLAGS            Linker flags
+#   PLATFORM_CXXFLAGS           C++ compiler flags.
+#
+
+OUTPUT=$1
+if test -z "$OUTPUT"; then
+  echo "usage: $0 <output-filename>" >&2
+  exit 1
+fi
+
+# Delete existing output, if it exists
+rm -f $OUTPUT
+touch $OUTPUT
+
+if test -z "$CXX"; then
+    CXX=g++
+fi
+
+# Detect OS
+if test -z "$TARGET_OS"; then
+    TARGET_OS=`uname -s`
+fi
+
+PLATFORM_CXXFLAGS=
+PLATFORM_LDFLAGS=
+
+case "$TARGET_OS" in
+    Darwin)
+        if test -e /opt/local/include/openssl; then
+            PLATFORM=OS_MACOSX_MACPORTS
+            PLATFORM_CXXFLAGS=-I/opt/local/include
+            PLATFORM_LDFLAGS=-L/opt/local/lib
+        elif test -e /usr/local/include/openssl; then
+            PLATFORM=OSX_MACOSX_HOMEBREW
+            PLATFORM_CXXFLAGS=-I/opt/local/include
+            PLATFORM_LDFLAGS=-L/opt/local/lib
+        fi
+        ;;
+    Linux)
+        PLATFORM=OS_LINUX
+        ;;
+    FreeBSD)
+        PLATFORM=OS_FREEBSD
+        ;;
+    NetBSD)
+        PLATFORM=OS_NETBSD
+        ;;
+    OpenBSD)
+        PLATFORM=OS_OPENBSD
+        ;;
+    *)
+        echo "Unknown platform!" >&2
+        exit 1
+esac
+
+echo "CXX=$CXX" >> $OUTPUT
+echo "PLATFORM=$PLATFORM" >> $OUTPUT
+echo "PLATFORM_LDFLAGS=$PLATFORM_LDFLAGS" >> $OUTPUT
+echo "PLATFORM_CXXFLAGS=$PLATFORM_CXXFLAGS" >> $OUTPUT

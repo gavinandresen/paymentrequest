@@ -1,0 +1,42 @@
+//
+// Simple Bitcoin Payment Protocol messages
+//
+// Use fields 100+ for extensions;
+// to avoid conflicts, register extensions at:
+// https://en.bitcoin.it/wiki/Payment_Request
+//
+message Output {
+	optional uint64 amount = 1 [default = 0];
+	required bytes script = 2;
+}
+message PaymentRequest {
+        optional string network = 1 [default = "main"];
+        repeated Output outputs = 2;
+        required uint64 time = 3;
+        optional uint64 expires = 4;
+        optional bool single_use = 5 [default = true];
+        optional string memo = 6;
+        optional string receipt_url = 7;
+        optional bytes merchant_data = 8;
+}        
+message SignedPaymentRequest {
+        required bytes pki_data = 1;
+        optional string pki_type = 2 [default = "x509"];
+        required bytes serialized_payment_request = 3;
+        optional uint32 payment_request_version = 4 [default = 1];
+        required bytes signature = 5;
+}
+message X509Certificates {
+        repeated bytes certificate = 1;
+}
+message Payment {
+        optional bytes merchant_data = 1;
+        repeated bytes transactions = 2;
+        repeated Output refund_to = 3;
+        optional string memo = 4;
+}
+message PaymentACK {
+        required Payment payment = 1;
+        required bool accepted = 2;
+        optional string memo = 3;
+}
