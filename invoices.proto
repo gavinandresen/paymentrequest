@@ -1,0 +1,20 @@
+message Output {
+	required uint64 value = 1;
+	required bytes script = 2;
+}
+
+message IdentityData {
+	// Signature that matches the type of public key provided in the last 
+	// certificate in cert_chain. This should really be required but it's
+	// not to simplify the signing process (signatures can't sign themselves).
+	optional bytes signature = 1;
+	// An array of X.509 certificates in DER form that form a chain back to a 
+	// trusted root authority. The last entry in the list is the signers cert.
+	repeated bytes cert_chain = 2;
+}
+
+message Invoice {
+	repeated Output outputs = 1;
+	optional IdentityData identity_data = 2	;
+	optional string label = 3;
+}
