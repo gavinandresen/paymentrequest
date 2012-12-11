@@ -10,7 +10,7 @@ CXXFLAGS = -g $(PLATFORM_CXXFLAGS)
 LDFLAGS = $(PLATFORM_LDFLAGS)
 
 PBFILES = paymentrequest.pb.h paymentrequest.pb.cc
-TARGETS = paymentrequest-create paymentrequest-verify
+TARGETS = paymentrequest-create paymentrequest-dump
 LIBS = -lssl -lcrypto -lprotobuf
 
 all: $(TARGETS) ca_in_a_box/certs/demomerchant.pem
@@ -25,9 +25,9 @@ CREATEOBJS = obj/util.o obj/paymentrequest-create.o obj/paymentrequest.pb.o
 paymentrequest-create: $(PBFILES) $(CREATEOBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $(CREATEOBJS) $(LDFLAGS) $(LIBS)
 
-VERIFYOBJS = obj/util.o obj/paymentrequest-verify.o obj/paymentrequest.pb.o
-paymentrequest-verify: $(PBFILES) $(VERIFYOBJS)
-	$(CXX) $(CXXFLAGS) -o $@ $(VERIFYOBJS) $(LDFLAGS) $(LIBS)
+DUMPOBJS = obj/util.o obj/paymentrequest-dump.o obj/paymentrequest.pb.o
+paymentrequest-dump: $(PBFILES) $(DUMPOBJS)
+	$(CXX) $(CXXFLAGS) -o $@ $(DUMPOBJS) $(LDFLAGS) $(LIBS)
 
 ca_in_a_box/certs/demomerchant.pem:
 	pushd ca_in_a_box && ./create_ca.sh && popd

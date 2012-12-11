@@ -3,8 +3,13 @@ Code implementing a simple payment protocol for Bitcoin (PaymentRequest/etc).
 See https://gist.github.com/4120476
 
 Dependencies:
-  OpenSSL
-  Google Protocol Buffers
+  OpenSSL (library and openssl command-line tool)
+  Google Protocol Buffers (library and protoc command-line compiler)
+
+Debian/Ubuntu:
+  apt-get install openssl protobuf
+OSX MacPorts:
+  port install openssl protobuf
 
 To compile:
   make
@@ -15,3 +20,6 @@ compile command-line tools:
 paymentrequest-create  # Prototype code: create a SignedPaymentRequest message
 paymentrequest-verify  # Prototype code: verify a SignedPaymentRequest message
 
+
+Example usage:
+  paymentrequest-create memo="Just Testing" amount=11.0 | paymentrequest-dump

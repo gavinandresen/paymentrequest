@@ -150,10 +150,13 @@ int main(int argc, char **argv) {
     // We got here, so the signature is self-consistent.
     signedPaymentRequest.set_signature(signature, actual_signature_len);
 
-    std::fstream outfile("demo.bitcoin-paymentrequest", std::ios::out | std::ios::trunc | std::ios::binary);
-    assert(signedPaymentRequest.SerializeToOstream(&outfile));
-    printf("File written successfully, see demo.bitcoin-paymentrequest\n");
-    printf("You can check it by running paymentrequest-verify\n");
+    if (params.count("out")) {
+        std::fstream outfile(params["out"].c_str(), std::ios::out | std::ios::trunc | std::ios::binary);
+        assert(signedPaymentRequest.SerializeToOstream(&outfile));
+    }
+    else {
+        assert(signedPaymentRequest.SerializeToOstream(&std::cout));
+    }
 
     delete[] signature;
 

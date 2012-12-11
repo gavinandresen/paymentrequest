@@ -17,6 +17,7 @@
 #include "util.h"
 
 using std::string;
+using std::map;
 
 // Take binary DER data and return an X509 object suitable for verification or use.
 X509 *parse_der_cert(string cert_data) {
@@ -27,6 +28,18 @@ X509 *parse_der_cert(string cert_data) {
 }
 
 int main(int argc, char **argv) {
+    std::list<string> expected = split("rootcertificates,in", ",");
+
+    map<string,string> params;
+    if (!parse_command_line(argc, argv, expected, params)) {
+        usage(expected);
+        exit(1);
+    }
+    if (params["rootcertificates"].empty()) {
+        // Use the certificate-authority-in-a-box root cert by default:
+        params["rootcertificates"] = string("ca_in_a_box/certs/cacert.pem");
+    }
+
     SSL_library_init();
     ERR_load_BIO_strings();
     SSL_load_error_strings();
@@ -43,17 +56,13 @@ int main(int argc, char **argv) {
     // how to do it, it doesn't actually look anything up despite the name.
     X509_LOOKUP *lookup = X509_STORE_add_lookup(cert_store, X509_LOOKUP_file());
 
-    // Use the certificate-authority-in-a-box root cert:
-    assert(X509_LOOKUP_load_file(lookup, "ca_in_a_box/certs/cacert.pem", X509_FILETYPE_PEM));
+    assert(X509_LOOKUP_load_file(lookup, params["rootcertificates"].c_str(), X509_FILETYPE_PEM));
 
-    // Load all the root authority certificates. This file was retrieved from
-    // http://www.startssl.com/certs/ca-bundle.pem on Nov 18th 2012.
-    // assert(X509_LOOKUP_load_file(lookup, "ca-bundle-startcom.pem", X509_FILETYPE_PEM));
-
-    // Load the paymentrequest file.
-    std::ifstream infile("demo.bitcoin-paymentrequest", std::ios::in | std::ios::binary);
+    // Load the paymentrequest file from stdin
     SignedPaymentRequest signedPaymentRequest;
-    assert(signedPaymentRequest.ParseFromIstream(&infile));
+    if (!signedPaymentRequest.ParseFromIstream(&std::cin)) {
+        exit(1);
+    }
 
     // Dump in raw text format, obviously this is mostly useless as bulk of
     // the data is binary.
@@ -105,19 +114,28 @@ int main(int argc, char **argv) {
     EVP_MD_CTX ctx;
     EVP_PKEY *pubkey = X509_get_pubkey(signing_cert);
     EVP_MD_CTX_init(&ctx);
-    assert(EVP_VerifyInit_ex(&ctx, EVP_sha256(), NULL));
-    assert(EVP_VerifyUpdate(&ctx, data_to_verify.data(), data_to_verify.size()));
-    assert(EVP_VerifyFinal(&ctx, (const unsigned char*)signature.data(), signature.size(), pubkey));
+    if (!EVP_VerifyInit_ex(&ctx, EVP_sha256(), NULL) ||
+        !EVP_VerifyUpdate(&ctx, data_to_verify.data(), data_to_verify.size()) ||
+        !EVP_VerifyFinal(&ctx, (const unsigned char*)signature.data(), signature.size(), pubkey)) {
 
-    // OpenSSL API for getting human printable strings from certs is baroque.
-    int textlen = X509_NAME_get_text_by_NID(certname, NID_commonName, NULL, 0);
-    char *website = new char[textlen + 1];
-    assert(X509_NAME_get_text_by_NID(certname, NID_commonName, website, textlen + 1) == textlen);
-    printf("Paymentrequest is valid! Signed by %s\n", website);
-    printf("Memo: %s\n", paymentRequest.memo().c_str());
+        printf("Bad signature, invalid SignedPaymentRequest.\n");
+    }
+    else {
+        // OpenSSL API for getting human printable strings from certs is baroque.
+        int textlen = X509_NAME_get_text_by_NID(certname, NID_commonName, NULL, 0);
+        char *website = new char[textlen + 1];
+        if (X509_NAME_get_text_by_NID(certname, NID_commonName, website, textlen + 1) == textlen && textlen > 0) {
+            printf("SignedPaymentRequest is valid! Signed by %s\n", website);
+        }
+        else {
+            printf("Bad certificate, missing common name\n");
+        }
+        delete[] website;
+    }
+
+    printf("PaymentRequest data:\n%s\n", paymentRequest.DebugString().c_str());
 
     // Avoid reported memory leaks.
-    delete website;
     X509_STORE_CTX_free(store_ctx);
     for (int i = 0; i < certs.size(); i++)
         X509_free(certs[i]);
