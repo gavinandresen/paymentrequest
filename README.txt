@@ -22,4 +22,4 @@ paymentrequest-verify  # Prototype code: verify a SignedPaymentRequest message
 
 
 Example usage:
-  paymentrequest-create memo="Just Testing" amount=11.0 | paymentrequest-dump
+  paymentrequest-create paytoaddress=1BTCorgHwCg6u2YSAWKgS17qUad6kHmtQW memo="Just Testing" amount=11.0 | paymentrequest-dump

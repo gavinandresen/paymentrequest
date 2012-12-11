@@ -5,6 +5,7 @@
 // Apple has deprecated OpenSSL in latest MacOS, shut up compiler warnings about it.
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
+#include <algorithm>
 #include <assert.h>
 #include <fstream>
 #include <iostream>
@@ -14,8 +15,10 @@
 #include <utility>
 
 #include <openssl/bio.h>
+#include <openssl/bn.h>
 #include <openssl/ssl.h>
 #include <openssl/pem.h>
+#include <openssl/sha.h>
 #include <openssl/x509.h>
 #include <openssl/x509_vfy.h>
 #include <openssl/evp.h>
@@ -57,12 +60,132 @@ string x509_to_der(X509 *cert) {
     return data;
 }
 
+static const char base58_chars[] =
+    "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+
+//
+// Decode a "base58check" address into its parts: one-byte version, 20-byte hash, 4-byte checksum.
+//
+bool decode_base58(const string& btcaddress, unsigned char& version, string& hash, string& checksum)
+{
+    unsigned char decoded[25];
+
+    size_t nBytes = 0;
+    BIGNUM bn58, bn, bnChar;
+    BN_CTX *ctx;
+
+    ctx = BN_CTX_new();
+    BN_init(&bn58);
+    BN_init(&bn);
+    BN_init(&bnChar);
+
+    BN_set_word(&bn58, 58);
+    BN_set_word(&bn, 0);
+
+    for (unsigned int i = 0; i < btcaddress.length(); i++) {
+        const char *p1 = strchr(base58_chars, btcaddress[i]);
+        if (!p1) {
+            goto out;
+        }
+
+        BN_set_word(&bnChar, p1 - base58_chars);
+
+        if (!BN_mul(&bn, &bn, &bn58, ctx))
+            goto out;
+
+        if (!BN_add(&bn, &bn, &bnChar))
+            goto out;
+    }
+
+    nBytes = BN_num_bytes(&bn);
+    if (nBytes == 0 || nBytes > 25)
+        return false;
+
+    std::fill(decoded, decoded+25, (unsigned char)0);
+    BN_bn2bin(&bn, &decoded[25-nBytes]);
+
+out:
+    BN_clear_free(&bn58);
+    BN_clear_free(&bn);
+    BN_clear_free(&bnChar);
+    BN_CTX_free(ctx);
+
+    version = decoded[0];
+    hash.clear(); hash.resize(20);
+    std::copy(decoded+1, decoded+21, hash.begin());
+    checksum.clear(); checksum.resize(4);
+    std::copy(decoded+21, decoded+25, checksum.begin());
+
+    // Make sure checksum is correct: (first four bytes of double-sha256)
+    unsigned char h1[SHA256_DIGEST_LENGTH];
+    SHA256_CTX sha256_1;
+    SHA256_Init(&sha256_1);
+    SHA256_Update(&sha256_1, &decoded[0], 21);
+    SHA256_Final(h1, &sha256_1);
+    unsigned char h2[SHA256_DIGEST_LENGTH];
+    SHA256_CTX sha256_2;
+    SHA256_Init(&sha256_2);
+    SHA256_Update(&sha256_2, &h1[0], SHA256_DIGEST_LENGTH);
+    SHA256_Final(h2, &sha256_2);
+    string ck(&h2[0], &h2[4]);
+    if (checksum != ck) {
+        return false;
+    }
+    return true;
+}
+
+//
+// Convert Address into a Script
+//
+bool address_to_script(const std::string& btcaddress, string& script, bool& fTestNet)
+{
+    unsigned char version;
+    string hash, checksum;
+    if (!decode_base58(btcaddress, version, hash, checksum)) return false;
+
+    fTestNet = false;
+    script.clear();
+    switch (version) {
+    case 111:
+        fTestNet = true; // Fall through to set script
+    case 0:
+        script.append(
+            "\x76\xa9" // DUP HASH160
+            "\x14" // Push 20-byte (160-bit) hash
+            );
+        script.append(hash);
+        script.append("\x88\xac"); // EQUALVERIFY CHECKSIG
+        break;
+
+    case 196:
+        fTestNet = true; // Fall through to set script
+    case 5:
+        script.append(
+            "\xa9" // HASH160
+            "\x14" // Push 20-byte (160-bit) hash
+            );
+        script.append(hash);
+        script.append("\x87"); // EQUAL
+        break;
+
+    default:
+        return false;
+    }
+
+    return true;
+}
+
 int main(int argc, char **argv) {
     std::list<string> expected = split("paytoaddress,amount,certificates,privatekey,memo,"
-                                       "expires,receipt_url,single_use,out,testnet,testnet3", ",");
+                                       "expires,receipt_url,single_use,out", ",");
 
     map<string,string> params;
     if (!parse_command_line(argc, argv, expected, params)) {
+        usage(expected);
+        exit(1);
+    }
+    if (params.count("paytoaddress") == 0) {
+        std::cerr << "You must specify paytoaddress=<address>\n";
         usage(expected);
         exit(1);
     }
@@ -92,21 +215,18 @@ int main(int argc, char **argv) {
     paymentRequest.set_time(time(0));
     paymentRequest.set_expires(time(0)+60*60*24);
     paymentRequest.set_single_use(true);
-    if (params.count("testnet") || params.count("testnet3"))
-        paymentRequest.set_network("testnet3");
 
-    // Output to Bitcoin Foundation donation address, using standard pay-to-pubkey-hash script:
-    // Foundation address is 1BTCorgHwCg6u2YSAWKgS17qUad6kHmtQW which is
-    // pay-to-public-key-whos-hash-is 72a5edf78b64c21e6ca2436f113c6426547b1491
-    // TODO: include a BTCAddressToScript() routine?
-    // BEWARE! Test your code on the test-network, and make sure you can redeem your
-    // outputs; it is easy to lose bitcoins by creating un-spendable outputs.
     Output* out = paymentRequest.add_outputs();
     if (amount > 0) out->set_amount(amount);
-    out->set_script("\x76\xa9" // DUP HASH160
-                    "\x14" // Push 20-byte (160-bit) hash
-                    "\x72\xa5\xed\xf7\x8b\x64\xc2\x1e\x6c\xa2\x43\x6f\x11\x3c\x64\x26\x54\x7b\x14\x91"
-                    "\x88\xac"); // EQUALVERIFY CHECKSIG
+    string script;
+    bool fTestNet = false;
+    if (!address_to_script(params["paytoaddress"], script, fTestNet)) {
+        std::cerr << "Invalid bitcoin address: " << params["paytoaddress"] << "\n";
+        exit(1);
+    }
+    out->set_script(script);
+    if (fTestNet)
+        paymentRequest.set_network("testnet3");
 
     // SignedPaymentRequest:
     SignedPaymentRequest signedPaymentRequest;
