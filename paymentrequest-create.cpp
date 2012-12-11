@@ -59,7 +59,7 @@ string x509_to_der(X509 *cert) {
 
 int main(int argc, char **argv) {
     std::list<string> expected = split("paytoaddress,amount,certificates,privatekey,memo,"
-                                       "expires,receipt_url,single_use,out", ",");
+                                       "expires,receipt_url,single_use,out,testnet,testnet3", ",");
 
     map<string,string> params;
     if (!parse_command_line(argc, argv, expected, params)) {
@@ -92,6 +92,8 @@ int main(int argc, char **argv) {
     paymentRequest.set_time(time(0));
     paymentRequest.set_expires(time(0)+60*60*24);
     paymentRequest.set_single_use(true);
+    if (params.count("testnet") || params.count("testnet3"))
+        paymentRequest.set_network("testnet3");
 
     // Output to Bitcoin Foundation donation address, using standard pay-to-pubkey-hash script:
     // Foundation address is 1BTCorgHwCg6u2YSAWKgS17qUad6kHmtQW which is
