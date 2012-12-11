@@ -16,6 +16,7 @@
 
 #include <openssl/bio.h>
 #include <openssl/bn.h>
+#include <openssl/err.h>
 #include <openssl/ssl.h>
 #include <openssl/pem.h>
 #include <openssl/sha.h>
@@ -30,20 +31,21 @@ using std::string;
 using std::map;
 
 // Returns the files contents as a byte array.
-string load_file(const char *path) {
+string load_file(string path) {
     string result;
-    std::ifstream cert_file(path);
+    std::ifstream cert_file(path.c_str());
     result.assign(std::istreambuf_iterator<char>(cert_file),  std::istreambuf_iterator<char>());    
     return result;
 }
 
-// Must be freed with BIO_free.
+// Result must be freed with BIO_free.
 BIO *string_to_bio(const string &str) {
     return BIO_new_mem_buf((void*)str.data(), str.size());
 }
 
 // Take textual PEM data (concatenated base64 encoded x509 data with separator markers)
 // and return an X509 object suitable for verification or use.
+// Result must be freed with X509_free()
 X509 *parse_pem_cert(string cert_data) {
     // Parse it into an X509 structure.
     BIO *bio = string_to_bio(cert_data);
@@ -57,6 +59,7 @@ string x509_to_der(X509 *cert) {
     unsigned char *buf = NULL;
     int buflen = i2d_X509(cert, &buf);
     string data((char*)buf, buflen);
+    OPENSSL_free(buf);
     return data;
 }
 
@@ -189,6 +192,16 @@ int main(int argc, char **argv) {
         usage(expected);
         exit(1);
     }
+    if (params.count("certificates") == 0) { // Default to ca_in_a_box test merchant:
+        params["certificates"] = "ca_in_a_box/certs/demomerchant.pem";
+        if (params.count("privatekey") == 0)
+            params["privatekey"] = "ca_in_a_box/private/demomerchantkey.pem";
+    }
+    if (params.count("privatekey") == 0) {
+        std::cerr << "You must specify privatekey=path/to/privatekey.pem\n";
+        usage(expected);
+        exit(1);
+    }
 
     // BTC to satoshis:
     ::google::protobuf::uint64 amount; 
@@ -201,13 +214,6 @@ int main(int argc, char **argv) {
     // Verify that the version of the library that we linked against is
     // compatible with the version of the headers we compiled against.
     GOOGLE_PROTOBUF_VERIFY_VERSION;
-
-    // Load demo merchant certificate:
-    X509 *my_cert = parse_pem_cert(load_file("ca_in_a_box/certs/demomerchant.pem"));
-
-    // Load StartComs intermediate cert. A real tool would let you specify all intermediate
-    // certs you need to reach a root CA, or load from a config file or whatever.
-    // X509 *intermediate_cert = parse_pem_cert(load_file("sub.class1.server.ca.pem"));
 
     // PaymentRequest:
     PaymentRequest paymentRequest;
@@ -236,8 +242,21 @@ int main(int argc, char **argv) {
 
     // Certificate chain:
     X509Certificates certChain;
-    certChain.add_certificate(x509_to_der(my_cert));
-//    certChain.add_certificate(x509_to_der(intermediate_cert));
+    X509 *first_cert = NULL;
+    EVP_PKEY *pubkey = NULL;
+    std::list<string> certFiles = split(params["certificates"], ",");
+    for (std::list<string>::iterator it = certFiles.begin(); it != certFiles.end(); it++) {
+        X509 *cert = parse_pem_cert(load_file(*it));
+        certChain.add_certificate(x509_to_der(cert));
+        if (first_cert == NULL) {
+            first_cert = cert; // Don't free this yet, need pubkey to stay valid
+            pubkey = X509_get_pubkey(cert);
+        }
+        else {
+            X509_free(cert);
+        }
+    }
+
     string certChainBytes;
     certChain.SerializeToString(&certChainBytes);
     signedPaymentRequest.set_pki_data(certChainBytes);
@@ -250,27 +269,36 @@ int main(int argc, char **argv) {
     // Now we want to sign the paymentRequest using the privkey that matches the cert.
     // There are many key formats and some keys can be password protected. We gloss
     // over all of that here and just assume unpassworded PEM.
-    BIO *pkey = string_to_bio(load_file("ca_in_a_box/private/demomerchantkey.pem"));
+    string pkey_string = load_file(params["privatekey"]);
+    BIO *pkey = string_to_bio(pkey_string);
     EVP_PKEY *privkey = PEM_read_bio_PrivateKey(pkey, NULL, NULL, NULL);
+    BIO_free(pkey);
     assert(privkey);
 
-    EVP_MD_CTX ctx;
-    EVP_MD_CTX_init(&ctx);
-    assert(EVP_SignInit_ex(&ctx, EVP_sha256(), NULL));
-    assert(EVP_SignUpdate(&ctx, data_to_sign.data(), data_to_sign.size()));
+    EVP_MD_CTX* ctx = EVP_MD_CTX_create();
+    assert(EVP_SignInit_ex(ctx, EVP_sha256(), NULL));
+    assert(EVP_SignUpdate(ctx, data_to_sign.data(), data_to_sign.size()));
     unsigned char *signature = new unsigned char[EVP_PKEY_size(privkey)];
     unsigned int actual_signature_len;
-    assert(EVP_SignFinal(&ctx, signature, &actual_signature_len, privkey));
+    assert(EVP_SignFinal(ctx, signature, &actual_signature_len, privkey));
+    EVP_MD_CTX_destroy(ctx);
+    EVP_PKEY_free(privkey);
 
     // Now we have our signature, let's check it actually verifies.
-    EVP_PKEY *pubkey = X509_get_pubkey(my_cert);
-    EVP_MD_CTX_init(&ctx);
-    assert(EVP_VerifyInit_ex(&ctx, EVP_sha256(), NULL));
-    assert(EVP_VerifyUpdate(&ctx, data_to_sign.data(), data_to_sign.size()));
-    assert(EVP_VerifyFinal(&ctx, signature, actual_signature_len, pubkey));
+    ctx = EVP_MD_CTX_create();
+    if (!EVP_VerifyInit_ex(ctx, EVP_sha256(), NULL) ||
+        !EVP_VerifyUpdate(ctx, data_to_sign.data(), data_to_sign.size()) ||
+        !EVP_VerifyFinal(ctx, signature, actual_signature_len, pubkey)) {
+        std::cerr << "Error! Signature failed; maybe private key and certificates do not match?\n";
+        exit(1);
+    }
+    EVP_MD_CTX_destroy(ctx);
+    EVP_PKEY_free(pubkey);
+    X509_free(first_cert);
 
     // We got here, so the signature is self-consistent.
     signedPaymentRequest.set_signature(signature, actual_signature_len);
+    delete[] signature;
 
     if (params.count("out")) {
         std::fstream outfile(params["out"].c_str(), std::ios::out | std::ios::trunc | std::ios::binary);
@@ -280,7 +308,7 @@ int main(int argc, char **argv) {
         assert(signedPaymentRequest.SerializeToOstream(&std::cout));
     }
 
-    delete[] signature;
-
     google::protobuf::ShutdownProtobufLibrary();
+    EVP_cleanup(); // frees memory allocated by OpenSSL_add_all_algorithms
+    ERR_free_strings(); // frees memory allocated by ERR_load_BIO_strings
 }
