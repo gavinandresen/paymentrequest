@@ -21,6 +21,8 @@
 using std::string;
 using std::map;
 
+using namespace payments;
+
 // Take binary DER data and return an X509 object suitable for verification or use.
 X509 *parse_der_cert(string cert_data) {
     const unsigned char *data = (const unsigned char *)cert_data.data();

@@ -55,6 +55,10 @@ DONE: 2. Create a command-line tools for debugging/testing:
   + Else: return PaymentAck.accepted=false
 
 
+7. Maybe more features for paymentrequest-create :
+  + Password-protected .pem private key files ?
+    (do web servers allow? How do they store the password?)
+
 CLIENT SIDE
 
 1. Rework Bitcoin-Qt bitcoin: URI handling to use QLocalSocket instead of the flaky

@@ -43,6 +43,8 @@
 using std::string;
 using std::map;
 
+using namespace payments;
+
 // Returns the files contents as a byte array.
 string load_file(string path) {
     string result;
