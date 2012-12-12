@@ -1,6 +1,18 @@
-// Writing out a demo invoice file. Loads certs from PEM files
-// converts them to binary DER form and writes them out to a
-// protocol buffer.
+//
+// Create a SignedPaymentRequest object, given:
+// REQUIRED:
+//  paytoaddress= : one of your bitcoin addresses (ideally, a unique-per-customer address)
+//  certificates= : one or more .pem files containing certificate chain signed by trusted root CA
+//  privatekey= : .pem file containing private key for first certificate in certificates
+//
+// OPTIONAL:
+//  amount= : amount (in BTC) that needs to be paid
+//  memo= : message to user
+//  expires= : unix timestamp (integer) when this Request expires
+//  receipt_url= : URL where a Payment message should be sent
+//  out= : file to write to (default: standard output)
+//  single_use : if specified, this will be a single-use Request
+//
 
 // Apple has deprecated OpenSSL in latest MacOS, shut up compiler warnings about it.
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
@@ -25,6 +37,7 @@
 #include <openssl/evp.h>
 
 #include "paymentrequest.pb.h";
+#include <google/protobuf/io/tokenizer.h>  // For string-to-uint64 conversion
 #include "util.h"
 
 using std::string;
@@ -68,6 +81,7 @@ static const char base58_chars[] =
 
 //
 // Decode a "base58check" address into its parts: one-byte version, 20-byte hash, 4-byte checksum.
+// Based on code from Jeff Garzik's picocoin project.
 //
 bool decode_base58(const string& btcaddress, unsigned char& version, string& hash, string& checksum)
 {
@@ -93,11 +107,8 @@ bool decode_base58(const string& btcaddress, unsigned char& version, string& has
 
         BN_set_word(&bnChar, p1 - base58_chars);
 
-        if (!BN_mul(&bn, &bn, &bn58, ctx))
-            goto out;
-
-        if (!BN_add(&bn, &bn, &bnChar))
-            goto out;
+        assert(BN_mul(&bn, &bn, &bn58, ctx));
+        assert(BN_add(&bn, &bn, &bnChar));
     }
 
     nBytes = BN_num_bytes(&bn);
@@ -178,6 +189,11 @@ bool address_to_script(const std::string& btcaddress, string& script, bool& fTes
     return true;
 }
 
+google::protobuf::uint64 BTC_to_satoshis(double btc)
+{
+    return static_cast< google::protobuf::uint64 >(1.0e8 * btc + 0.5);
+}
+
 int main(int argc, char **argv) {
     std::list<string> expected = split("paytoaddress,amount,certificates,privatekey,memo,"
                                        "expires,receipt_url,single_use,out", ",");
@@ -203,10 +219,6 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-    // BTC to satoshis:
-    ::google::protobuf::uint64 amount; 
-    amount = static_cast< ::google::protobuf::uint64 >(1.0e8 * atof(params["amount"].c_str()));
-
     SSL_library_init();
     ERR_load_BIO_strings();
     SSL_load_error_strings();
@@ -219,11 +231,21 @@ int main(int argc, char **argv) {
     PaymentRequest paymentRequest;
     paymentRequest.set_memo(params["memo"]);
     paymentRequest.set_time(time(0));
-    paymentRequest.set_expires(time(0)+60*60*24);
-    paymentRequest.set_single_use(true);
+    if (params.count("expires") > 0) {
+        google::protobuf::uint64 expires;
+        if (google::protobuf::io::Tokenizer::ParseInteger(params["expires"], -1, &expires)) 
+            paymentRequest.set_expires(expires);
+        else
+            std::cerr << "Invalid expires, ignoring: " << params["expires"] << "\n";
+    }
+    if (params.count("single_use"))
+        paymentRequest.set_single_use(true);
+    if (params.count("receipt_url"))
+        paymentRequest.set_receipt_url(params["receipt_url"]);
 
     Output* out = paymentRequest.add_outputs();
-    if (amount > 0) out->set_amount(amount);
+    if (params.count("amount") > 0)
+        out->set_amount(BTC_to_satoshis(atof(params["amount"].c_str())));
     string script;
     bool fTestNet = false;
     if (!address_to_script(params["paytoaddress"], script, fTestNet)) {

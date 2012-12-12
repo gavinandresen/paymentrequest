@@ -1,4 +1,6 @@
-// Demo of how to verify X509 cert chain without an SSL connection.
+//
+// Verify a SignedPaymentRequest, and dump it out in human-readable form
+//
 
 // Apple has deprecated OpenSSL in latest MacOS, shut up compiler warnings about it.
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
@@ -137,7 +139,7 @@ int main(int argc, char **argv) {
 
     // Avoid reported memory leaks.
     X509_STORE_CTX_free(store_ctx);
-    for (int i = 0; i < certs.size(); i++)
+    for (unsigned int i = 0; i < certs.size(); i++)
         X509_free(certs[i]);
     X509_STORE_free(cert_store);
     google::protobuf::ShutdownProtobufLibrary();

@@ -6,7 +6,7 @@
 $(shell ./build_detect_platform build_config.mk)
 include build_config.mk
 
-CXXFLAGS = -g $(PLATFORM_CXXFLAGS)
+CXXFLAGS = -g -Wall $(PLATFORM_CXXFLAGS)
 LDFLAGS = $(PLATFORM_LDFLAGS)
 
 PBFILES = paymentrequest.pb.h paymentrequest.pb.cc

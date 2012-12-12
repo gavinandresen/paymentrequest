@@ -2,7 +2,7 @@ Task list for implementing PaymentRequest/etc
 
 SERVER SIDE:
 
-1. Create command-line, intended-to-run-on-a-web-server merchant tool
+DONE: 1. Create command-line, intended-to-run-on-a-web-server merchant tool
   that creates PaymentRequest messages: paymentrequest-create
 
 Arguments:
@@ -22,9 +22,8 @@ Arguments:
 
 See https://gist.github.com/4120476 for a description of the other arguments.
 
-2. Create a couple of command-line tools for debugging/testing:
+DONE: 2. Create a command-line tools for debugging/testing:
   "paymentrequest-dump"
-  "payment-create"
 
 3. Create a testing website that generates -testnet SignedPaymentRequests signed
   by a valid certificate (allow user to choose paytoaddress/amount/etc).
