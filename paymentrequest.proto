@@ -25,10 +25,10 @@ message PaymentRequest {
         optional bytes merchant_data = 8;
 }        
 message SignedPaymentRequest {
-        required bytes pki_data = 1;
+        optional uint32 payment_request_version = 1 [default = 1];
         optional string pki_type = 2 [default = "x509"];
-        required bytes serialized_payment_request = 3;
-        optional uint32 payment_request_version = 4 [default = 1];
+        required bytes pki_data = 3;
+        required bytes serialized_payment_request = 4;
         required bytes signature = 5;
 }
 message X509Certificates {
