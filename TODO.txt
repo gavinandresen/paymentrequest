@@ -61,8 +61,9 @@ DONE: 2. Create a command-line tools for debugging/testing:
 
 CLIENT SIDE
 
-1. Rework Bitcoin-Qt bitcoin: URI handling to use QLocalSocket instead of the flaky
+1. DONE:  Rework Bitcoin-Qt bitcoin: URI handling to use QLocalSocket instead of the flaky
    boost::interprocess mechanism.
+     see https://github.com/bitcoin/bitcoin/pull/2299/
 
 2. Teach Bitcoin-Qt to handle application/x-bitcoin-payment-request MIME type:
   + Add protobuf library as dependency to .pro file, doc/build-*.txt, gitian dependencies, etc.
