@@ -17,8 +17,8 @@ To compile:
 The Makefile will create a "certificate authority in a box" in ca_in_a_box/ and
 compile command-line tools:
 
-paymentrequest-create  # Prototype code: create a SignedPaymentRequest message
-paymentrequest-verify  # Prototype code: verify a SignedPaymentRequest message
+paymentrequest-create  # Prototype code: create a PaymentRequest message
+paymentrequest-verify  # Prototype code: verify a PaymentRequest message
 
 
 Example usage:

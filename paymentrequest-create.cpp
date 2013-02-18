@@ -1,5 +1,5 @@
 //
-// Create a SignedPaymentRequest object, given:
+// Create a PaymentRequest object, given:
 // REQUIRED:
 //  paytoaddress= : one of your bitcoin addresses (ideally, a unique-per-customer address)
 //  certificates= : one or more .pem files containing certificate chain signed by trusted root CA
@@ -229,23 +229,23 @@ int main(int argc, char **argv) {
     // compatible with the version of the headers we compiled against.
     GOOGLE_PROTOBUF_VERIFY_VERSION;
 
-    // PaymentRequest:
-    PaymentRequest paymentRequest;
-    paymentRequest.set_memo(params["memo"]);
-    paymentRequest.set_time(time(0));
+    // PaymentDetails:
+    PaymentDetails details;
+    details.set_memo(params["memo"]);
+    details.set_time(time(0));
     if (params.count("expires") > 0) {
         google::protobuf::uint64 expires;
         if (google::protobuf::io::Tokenizer::ParseInteger(params["expires"], -1, &expires)) 
-            paymentRequest.set_expires(expires);
+            details.set_expires(expires);
         else
             std::cerr << "Invalid expires, ignoring: " << params["expires"] << "\n";
     }
     if (params.count("single_use"))
-        paymentRequest.set_single_use(true);
+        details.set_single_use(true);
     if (params.count("receipt_url"))
-        paymentRequest.set_receipt_url(params["receipt_url"]);
+        details.set_receipt_url(params["receipt_url"]);
 
-    Output* out = paymentRequest.add_outputs();
+    Output* out = details.add_outputs();
     if (params.count("amount") > 0)
         out->set_amount(BTC_to_satoshis(atof(params["amount"].c_str())));
     string script;
@@ -256,13 +256,13 @@ int main(int argc, char **argv) {
     }
     out->set_script(script);
     if (fTestNet)
-        paymentRequest.set_network("testnet3");
+        details.set_network("testnet3");
 
-    // SignedPaymentRequest:
-    SignedPaymentRequest signedPaymentRequest;
-    string paymentRequestBytes;
-    paymentRequest.SerializeToString(&paymentRequestBytes);
-    signedPaymentRequest.set_serialized_payment_request(paymentRequestBytes);
+    // PaymentRequest:
+    PaymentRequest request;
+    string detailsBytes;
+    details.SerializeToString(&detailsBytes);
+    request.set_serialized_payment_details(detailsBytes);
 
     // Certificate chain:
     X509Certificates certChain;
@@ -283,12 +283,13 @@ int main(int argc, char **argv) {
 
     string certChainBytes;
     certChain.SerializeToString(&certChainBytes);
-    signedPaymentRequest.set_pki_data(certChainBytes);
+    request.set_pki_type("x509");
+    request.set_pki_data(certChainBytes);
 
-    // Serialize the signedpaymentRequest in preparation for signing.
-    signedPaymentRequest.set_signature(string(""));
+    // Serialize the PaymentRequest in preparation for signing.
+    request.set_signature(string(""));
     string data_to_sign;
-    signedPaymentRequest.SerializeToString(&data_to_sign);
+    request.SerializeToString(&data_to_sign);
 
     // Now we want to sign the paymentRequest using the privkey that matches the cert.
     // There are many key formats and some keys can be password protected. We gloss
@@ -321,15 +322,15 @@ int main(int argc, char **argv) {
     X509_free(first_cert);
 
     // We got here, so the signature is self-consistent.
-    signedPaymentRequest.set_signature(signature, actual_signature_len);
+    request.set_signature(signature, actual_signature_len);
     delete[] signature;
 
     if (params.count("out")) {
         std::fstream outfile(params["out"].c_str(), std::ios::out | std::ios::trunc | std::ios::binary);
-        assert(signedPaymentRequest.SerializeToOstream(&outfile));
+        assert(request.SerializeToOstream(&outfile));
     }
     else {
-        assert(signedPaymentRequest.SerializeToOstream(&std::cout));
+        assert(request.SerializeToOstream(&std::cout));
     }
 
     google::protobuf::ShutdownProtobufLibrary();

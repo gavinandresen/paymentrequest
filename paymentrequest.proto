@@ -14,7 +14,7 @@ message Output {
 	optional uint64 amount = 1 [default = 0];
 	required bytes script = 2;
 }
-message PaymentRequest {
+message PaymentDetails {
         optional string network = 1 [default = "main"];
         repeated Output outputs = 2;
         required uint64 time = 3;
@@ -24,12 +24,12 @@ message PaymentRequest {
         optional string receipt_url = 7;
         optional bytes merchant_data = 8;
 }        
-message SignedPaymentRequest {
-        optional uint32 payment_request_version = 1 [default = 1];
-        optional string pki_type = 2 [default = "x509"];
-        required bytes pki_data = 3;
-        required bytes serialized_payment_request = 4;
-        required bytes signature = 5;
+message PaymentRequest {
+        optional uint32 payment_details_version = 1 [default = 1];
+        optional string pki_type = 2 [default = "none"];
+        optional bytes pki_data = 3;
+        required bytes serialized_payment_details = 4;
+        optional bytes signature = 5;
 }
 message X509Certificates {
         repeated bytes certificate = 1;

@@ -25,10 +25,10 @@ See https://gist.github.com/4120476 for a description of the other arguments.
 DONE: 2. Create a command-line tools for debugging/testing:
   "paymentrequest-dump"
 
-3. Create a testing website that generates -testnet SignedPaymentRequests signed
+3. Create a testing website that generates -testnet PaymentRequests signed
   by a valid certificate (allow user to choose paytoaddress/amount/etc).
 
-4. Modify testing website so it will generate invalid SignedPaymentRequests
+4. Modify testing website so it will generate invalid PaymentRequests
   Conditions:
     Self-signed
     Expired leaf certificate
@@ -71,7 +71,7 @@ CLIENT SIDE
     somewhere else.
   + Display Send dialog with info from PaymentRequest
 
- TEST: feed valid/invalid SignedPaymentRequests via command line (make these unit tests?)
+ TEST: feed valid/invalid PaymentRequests via command line (make these unit tests?)
 
 3. Modify installers to:
   register Bitcoin-Qt as x-bitcoin-payment-request handler

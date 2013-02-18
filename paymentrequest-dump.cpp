@@ -1,5 +1,5 @@
 //
-// Verify a SignedPaymentRequest, and dump it out in human-readable form
+// Verify a PaymentRequest, and dump it out in human-readable form
 //
 
 // Apple has deprecated OpenSSL in latest MacOS, shut up compiler warnings about it.
@@ -63,21 +63,21 @@ int main(int argc, char **argv) {
     assert(X509_LOOKUP_load_file(lookup, params["rootcertificates"].c_str(), X509_FILETYPE_PEM));
 
     // Load the paymentrequest file from stdin
-    SignedPaymentRequest signedPaymentRequest;
-    if (!signedPaymentRequest.ParseFromIstream(&std::cin)) {
+    PaymentRequest request;
+    if (!request.ParseFromIstream(&std::cin)) {
         exit(1);
     }
 
     // Dump in raw text format, obviously this is mostly useless as bulk of
     // the data is binary.
-    // printf("%s\n", signedPaymentRequest.DebugString().c_str());
+    // printf("%s\n", request.DebugString().c_str());
 
     // Load the certs from the paymentrequest.
-    PaymentRequest paymentRequest;
-    assert(paymentRequest.ParseFromString(signedPaymentRequest.serialized_payment_request()));
+    PaymentDetails details;
+    assert(details.ParseFromString(request.serialized_payment_details()));
 
     X509Certificates certChain;
-    assert(certChain.ParseFromString(signedPaymentRequest.pki_data()));
+    assert(certChain.ParseFromString(request.pki_data()));
 
     std::vector<X509*> certs;
     for (int i = 0; i < certChain.certificate_size(); i++) {
@@ -109,11 +109,11 @@ int main(int argc, char **argv) {
     }
 
     // The cert is valid. Now we need to check the signature.
-    string signature = signedPaymentRequest.signature();
+    string signature = request.signature();
     string data_to_verify; // Everything but the signature
-    signedPaymentRequest.set_signature(string(""));
-    signedPaymentRequest.SerializeToString(&data_to_verify);
-    signedPaymentRequest.set_signature(signature);
+    request.set_signature(string(""));
+    request.SerializeToString(&data_to_verify);
+    request.set_signature(signature);
 
     EVP_MD_CTX ctx;
     EVP_PKEY *pubkey = X509_get_pubkey(signing_cert);
@@ -122,14 +122,14 @@ int main(int argc, char **argv) {
         !EVP_VerifyUpdate(&ctx, data_to_verify.data(), data_to_verify.size()) ||
         !EVP_VerifyFinal(&ctx, (const unsigned char*)signature.data(), signature.size(), pubkey)) {
 
-        printf("Bad signature, invalid SignedPaymentRequest.\n");
+        printf("Bad signature, invalid PaymentRequest.\n");
     }
     else {
         // OpenSSL API for getting human printable strings from certs is baroque.
         int textlen = X509_NAME_get_text_by_NID(certname, NID_commonName, NULL, 0);
         char *website = new char[textlen + 1];
         if (X509_NAME_get_text_by_NID(certname, NID_commonName, website, textlen + 1) == textlen && textlen > 0) {
-            printf("SignedPaymentRequest is valid! Signed by %s\n", website);
+            printf("PaymentRequest is valid! Signed by %s\n", website);
         }
         else {
             printf("Bad certificate, missing common name\n");
@@ -137,7 +137,7 @@ int main(int argc, char **argv) {
         delete[] website;
     }
 
-    printf("PaymentRequest data:\n%s\n", paymentRequest.DebugString().c_str());
+    printf("PaymentRequest details:\n%s\n", details.DebugString().c_str());
 
     // Avoid reported memory leaks.
     X509_STORE_CTX_free(store_ctx);
