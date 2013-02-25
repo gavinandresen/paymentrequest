@@ -102,7 +102,7 @@ int main(int argc, char **argv) {
     // Now do the verification!
     int result = X509_verify_cert(store_ctx);
     X509_NAME *certname = X509_get_subject_name(signing_cert);
-    if (result < 0) {
+    if (result != 1) {
         int error = X509_STORE_CTX_get_error(store_ctx);
         printf("%d: %s\n", error, X509_verify_cert_error_string(error));
         exit(1);
