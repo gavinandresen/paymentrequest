@@ -66,12 +66,12 @@ CLIENT SIDE
      see https://github.com/bitcoin/bitcoin/pull/2299/
 
 2. Teach Bitcoin-Qt to handle application/x-bitcoin-payment-request MIME type:
-  + Add protobuf library as dependency to .pro file, doc/build-*.txt, gitian dependencies, etc.
-  + Add set of root certificates to tree, read at startup, config option to read from
-    somewhere else.
+  DONE Add protobuf library as dependency to .pro file, doc/build-*.txt, gitian dependencies, etc.
+  DONE Use system root certs, but allow overriding with own list.
   + Display Send dialog with info from PaymentRequest
 
- TEST: feed valid/invalid PaymentRequests via command line (make these unit tests?)
+ TEST: feed valid/invalid PaymentRequests via command line
+ DONE: Unit tests for valid/invalid certs
 
 3. Modify installers to:
   register Bitcoin-Qt as x-bitcoin-payment-request handler
@@ -81,8 +81,7 @@ CLIENT SIDE
    produce application/x-bitcoin-payment-request content)
    
 4. Teach Bitcoin-Qt the extended bitcoin: URI syntax:
-  + if payment_url given, fetch payment-request file, send it to
-    running Bitcoin-Qt
+  + if request= given, fetch payment-request from URL
 
   TEST: clean install, running -testnet, click on extended bitcoin: links and
     complete payments.
