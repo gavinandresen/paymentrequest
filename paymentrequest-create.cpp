@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <assert.h>
+#include <cstdio>
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -33,6 +34,7 @@
 #include <openssl/pem.h>
 #include <openssl/sha.h>
 #include <openssl/x509.h>
+#include <openssl/x509v3.h>
 #include <openssl/x509_vfy.h>
 #include <openssl/evp.h>
 
@@ -65,8 +67,13 @@ X509 *parse_pem_cert(string cert_data) {
     // Parse it into an X509 structure.
     BIO *bio = string_to_bio(cert_data);
     X509 *cert = PEM_read_bio_X509_AUX(bio, NULL, NULL, NULL);
-    assert(cert);
-    BIO_free(bio);  
+    BIO_free(bio);
+    return cert;
+}
+X509 *parse_der_cert(string cert_data) {
+    BIO *bio = string_to_bio(cert_data);
+    X509 *cert = d2i_X509_bio(bio, NULL);
+    BIO_free(bio);
     return cert;
 }
 
@@ -76,6 +83,88 @@ string x509_to_der(X509 *cert) {
     string data((char*)buf, buflen);
     OPENSSL_free(buf);
     return data;
+}
+
+X509* fetchCert(const char* uri)
+{
+    // TODO: use libcurl or something nicer instead of shelling
+    // out to curl
+
+    std::string command("curl -m 60 --silent ");
+    command.append(uri);
+    FILE* fp = popen(command.c_str(), "r");
+    if (!fp)
+    {
+        fprintf(stderr, "Error opening %s\n", command.c_str());
+        return NULL;
+    }
+    string data;
+    char buf[1024];
+    size_t n;
+    do
+    {
+        n = fread(buf, 1, 1024, fp);
+        data.append(buf, n);
+    } while(n > 0);
+    pclose(fp);
+
+    if (data.empty())
+    {
+        fprintf(stderr, "Error reading %s\n", uri);
+        return NULL;
+    }
+
+    // If I was doing this right I'd look at the Content-Type
+    // http header... but the chances a DER-encoded certificate
+    // happens to contain the PEM header is pretty darn small, so
+    // this should work.
+    if (data.find("-----BEGIN CERTIFICATE-----") != string::npos)
+        return parse_pem_cert(data);
+
+    return parse_der_cert(data);
+}
+
+bool isRootCert(X509* cert)
+{
+    X509_NAME* issuer = X509_get_issuer_name(cert);
+    X509_NAME* subject = X509_get_subject_name(cert);
+    if (X509_NAME_cmp(issuer, subject) == 0)
+        return true;
+    return false;
+}
+
+void fetchParentCerts(X509Certificates& certChain, X509* cert)
+{
+    // If cert is self-signed, then it is a root certificate
+    // and there's nothing to do
+    if (isRootCert(cert)) return;
+
+    // The Authority Info Access extension can contain
+    // info about where to fetch parent/root certs.
+    AUTHORITY_INFO_ACCESS* ads = (AUTHORITY_INFO_ACCESS*)X509_get_ext_d2i(cert, NID_info_access, 0, 0);
+    for (int i = 0; i < sk_ACCESS_DESCRIPTION_num(ads); i++)
+    {
+        ACCESS_DESCRIPTION *ad = sk_ACCESS_DESCRIPTION_value(ads, i);
+        if (OBJ_obj2nid(ad->method) == NID_ad_ca_issuers && ad->location->type == GEN_URI)
+        {
+            char* uri = (char*)ASN1_STRING_data(ad->location->d.uniformResourceIdentifier);
+
+            X509* parent = fetchCert(uri);
+            if (parent && !isRootCert(parent))
+            {
+                // Successful: add to end of certChain, then recurse
+                // fprintf(stderr, "Adding %s to end of chain\n", uri);
+
+                certChain.add_certificate(x509_to_der(parent));
+
+                fetchParentCerts(certChain, parent);
+
+                X509_free(parent);
+                break;
+            }
+            //else fprintf(stderr, "Skipped %s\n", uri);
+        }
+    }
 }
 
 static const char base58_chars[] =
@@ -267,6 +356,7 @@ int main(int argc, char **argv) {
     // Certificate chain:
     X509Certificates certChain;
     X509 *first_cert = NULL;
+    X509 *last_cert = NULL;
     EVP_PKEY *pubkey = NULL;
     std::list<string> certFiles = split(params["certificates"], ",");
     for (std::list<string>::iterator it = certFiles.begin(); it != certFiles.end(); it++) {
@@ -279,7 +369,11 @@ int main(int argc, char **argv) {
         else {
             X509_free(cert);
         }
+        last_cert = cert;
     }
+
+    // Fetch any missing intermediate certificates, if we can:
+    fetchParentCerts(certChain, last_cert);
 
     string certChainBytes;
     certChain.SerializeToString(&certChainBytes);
