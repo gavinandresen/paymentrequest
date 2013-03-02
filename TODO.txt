@@ -61,9 +61,8 @@ DONE: 2. Create a command-line tools for debugging/testing:
 
 CLIENT SIDE
 
-1. DONE:  Rework Bitcoin-Qt bitcoin: URI handling to use QLocalSocket instead of the flaky
+1. DONE/PULLED:  Rework Bitcoin-Qt bitcoin: URI handling to use QLocalSocket instead of the flaky
    boost::interprocess mechanism.
-     see https://github.com/bitcoin/bitcoin/pull/2299/
 
 2. Teach Bitcoin-Qt to handle application/x-bitcoin-payment-request MIME type:
   DONE Add protobuf library as dependency to .pro file, doc/build-*.txt, gitian dependencies, etc.
@@ -75,16 +74,16 @@ CLIENT SIDE
 
 3. Modify installers to:
   register Bitcoin-Qt as x-bitcoin-payment-request handler
-  put root certificates .pem  where Bitcoin-Qt will look for it at startup
+  OSX: DONE
+  Windows
+  Linux  (??? just ppa ???)
 
- TEST: clean install, running -testnet, click on both ordinary links (that
-   produce application/x-bitcoin-payment-request content)
+ TEST: OSX/Linux/Windows
    
 4. Teach Bitcoin-Qt the extended bitcoin: URI syntax:
-  + if request= given, fetch payment-request from URL
+  DONE if request= given, fetch payment-request from URL
 
-  TEST: clean install, running -testnet, click on extended bitcoin: links and
-    complete payments.
+  TEST: OSX/Linux/Windows
 
 5. Teach Bitcoin-Qt to create and submit Payment messages when given
   a PaymentRequest with a payment_url:
