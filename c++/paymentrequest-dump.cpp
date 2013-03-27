@@ -76,6 +76,24 @@ int main(int argc, char **argv) {
     PaymentDetails details;
     assert(details.ParseFromString(request.serialized_payment_details()));
 
+    const EVP_MD* digestAlgorithm = NULL;
+
+    // pki_type == "None" : just dump details:
+    if (request.pki_type() == "None") {
+        printf("Unsigned payment request.\n");
+        printf("PaymentRequest details:\n%s\n", details.DebugString().c_str());
+        exit(0);
+    }
+    else if (request.pki_type() == "x509+sha256") {
+        digestAlgorithm = EVP_sha256();
+    }
+    else if (request.pki_type() == "x509+sha1") {
+        digestAlgorithm = EVP_sha1();
+    }
+    else {
+        printf("Unknown pki_type: %s\n", request.pki_type().c_str());
+    }
+
     X509Certificates certChain;
     assert(certChain.ParseFromString(request.pki_data()));
 
@@ -118,7 +136,7 @@ int main(int argc, char **argv) {
     EVP_MD_CTX ctx;
     EVP_PKEY *pubkey = X509_get_pubkey(signing_cert);
     EVP_MD_CTX_init(&ctx);
-    if (!EVP_VerifyInit_ex(&ctx, EVP_sha256(), NULL) ||
+    if (!EVP_VerifyInit_ex(&ctx, digestAlgorithm, NULL) ||
         !EVP_VerifyUpdate(&ctx, data_to_verify.data(), data_to_verify.size()) ||
         !EVP_VerifyFinal(&ctx, (const unsigned char*)signature.data(), signature.size(), pubkey)) {
 

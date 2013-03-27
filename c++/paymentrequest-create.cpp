@@ -377,7 +377,7 @@ int main(int argc, char **argv) {
 
     string certChainBytes;
     certChain.SerializeToString(&certChainBytes);
-    request.set_pki_type("x509");
+    request.set_pki_type("x509+sha256");
     request.set_pki_data(certChainBytes);
 
     // Serialize the PaymentRequest in preparation for signing.
