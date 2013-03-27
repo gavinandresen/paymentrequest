@@ -82,15 +82,13 @@ A PaymentRequest is PaymentDetails cryptographically tied to a merchant's identi
 
 payment_details_version: See below for a discussion of versioning/upgrading. 
 
-pki_type : public-key infrastructure (PKI) system being used to identify the merchant. All implementation should support "none" and "x509".
+pki_type : public-key infrastructure (PKI) system being used to identify the merchant. All implementation should support "none", "x509+sha256" and "x509+sha1".
 
 pki_data: PKI-system data that identifies the merchant and can be used to create a digital signature. In the case of X.509 certificates, pki_data one or more X.509 certificates (see Certificates section below).
 
 serialized_payment_details: A protocol-buffer serialized PaymentDetails message.
 
-signature: digital signature over a protocol buffer serialized variation of the PaymentRequest message where signature is a zero-byte array and fields are serialized in numerical order (all current protocol buffer implementations serialize fields in numerical order), using the public key in pki_data.
-
-When a Bitcoin client receives a PaymentRequest, it must authorize payment by doing the following:
+signature: digital signature over a hash of the protocol buffer serialized variation of the PaymentRequest message, where signature is a zero-byte array and fields are serialized in numerical order (all current protocol buffer implementations serialize fields in numerical order), using the public key in pki_data.
 
 When a Bitcoin client receives a PaymentRequest, it must authorize payment by doing the following:
 
@@ -158,7 +156,7 @@ Once broadcast on the Bitcon p2p network, payments are like any other Bitcoin tr
 Certificates
 ============
 
-The default PKI system is X.509 certificates (the same system used to authenticate web servers). The format of pki_data when pki_type is "x509" is a protocol-buffer-encoded certificate chain [RFC5280]:
+The default PKI system is X.509 certificates (the same system used to authenticate web servers). The format of pki_data when pki_type is "x509+sha256" or "x509+sha1" is a protocol-buffer-encoded certificate chain [RFC5280]:
 
 ::
 
@@ -166,14 +164,15 @@ The default PKI system is X.509 certificates (the same system used to authentica
         repeated bytes certificate = 1;
     }
 
+If pki_type is "x509+sha256", then the Payment message is hashed using the SHA256 algorithm to produce the message digest that is signed. If pki_type is "x509+sha1", then the SHA1 algorithm is used, but SHA1 should only be used if SHA256 is not available.
+
 Each certificate is a DER [ITU.X690.1994] PKIX certificate value. The certificate containing the public key of the entity that digitally signed the PaymentRequest MUST be the first certificate. This MAY be followed by additional certificates, with each subsequent certificate being the one used to certify the previous one. The recipient MUST verify the certificate chain according to [RFC5280] and reject the PaymentRequest if any validation failure occurs.
 
-*Issue:* What should we say about root certificates and certificate management in general? Any requirements, or leave it up to each Bitcoin client to determine which root CA's are trustworthy, as happens with web browsers? Gavin suggests trusting only (say) ten of the Extended Validation authorities: http://en.wikipedia.org/wiki/Extended_Validation_Certificate#Extended_Validation_certificate_identification
+*Issue:* What should we say about root certificates and certificate management in general? Any requirements, or leave it up to each Bitcoin client to determine which root CA's are trustworthy, as happens with web browsers? Proposal: by default, use the system's list of root certificates, which should be kept up-to-date with system software updates. But allow technical or paranoid users to override with a list of their own.
 
-*Issue:* X.509 is widely criticised for doing too much. However, it is the PKI system we're stuck with. Do web browsers / certificate authorities support the full X.509 spec, or only a subset? Should Bitcoin clients only support some well-defined subset of X.509 ? More research needed here... 
+*Issue:* Specify a maximum certificate chain length, to avoid DoS or other potential attacks? What is the maximum chain length that reputable certificate issuing authorities use?  Proposal: maximum 50,000 bytes for the entire PaymentRequest message, which is plenty for any reasonable size certificate chain.
 
-*Issue:* Specify a maximum certificate chain length, to avoid DoS or other potential attacks? What is the maximum chain length that reputable certificate issuing authorities use?
-
+*Potential extension:* add 'bytes ocsp_response' for an optional "stapled" OCSP reponse (http://en.wikipedia.org/wiki/OCSP_Stapling) to prove the merchant certificate hasn't been revoked.
 
 Extensibility / Upgrading
 =========================
@@ -184,7 +183,7 @@ PaymentDetails messages may be extended with new optional fields and still be co
 
 If it becomes necessary at some point in the future for merchants to produce PaymentRequest messages that are accepted *only* by new implementations, they can do so by defining a new PaymentDetails message with version=2. Old implementations should let the user know that they need to upgrade their software when they get an up-version PaymentDetails message.
 
-Implementations that need to extend messages in this specification shall use tags starting at 1000, and shall update the wiki page at **TODO** to avoid conflicts with other extensions.
+Implementations that need to extend messages in this specification shall use tags starting at 1000, and shall update the wiki page at https://en.bitcoin.it/wiki/Payment_Request to avoid conflicts with other extensions.
 
 
 Use Cases
