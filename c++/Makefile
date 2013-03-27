@@ -13,13 +13,13 @@ PBFILES = paymentrequest.pb.h paymentrequest.pb.cc
 TARGETS = paymentrequest-create paymentrequest-dump
 LIBS = -lssl -lcrypto -lprotobuf
 
-all: $(TARGETS) ca_in_a_box/certs/demomerchant.pem
+all: $(TARGETS) ../ca_in_a_box/certs/demomerchant.pem
 
 # auto-generated dependencies:
 -include *.P
 
-$(PBFILES): paymentrequest.proto
-	protoc --cpp_out=. $<
+$(PBFILES): ../paymentrequest.proto
+	pushd .. && protoc --cpp_out=c++ paymentrequest.proto && popd
 
 CREATEOBJS = obj/util.o obj/paymentrequest-create.o obj/paymentrequest.pb.o
 paymentrequest-create: $(PBFILES) $(CREATEOBJS)
@@ -29,8 +29,8 @@ DUMPOBJS = obj/util.o obj/paymentrequest-dump.o obj/paymentrequest.pb.o
 paymentrequest-dump: $(PBFILES) $(DUMPOBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $(DUMPOBJS) $(LDFLAGS) $(LIBS)
 
-ca_in_a_box/certs/demomerchant.pem:
-	pushd ca_in_a_box && ./create_ca.sh && popd
+../ca_in_a_box/certs/demomerchant.pem:
+	pushd ../ca_in_a_box && ./create_ca.sh && popd
 
 clean:
 	rm -f $(TARGETS)
