@@ -12,7 +12,7 @@ Arguments:
   --privatekey=path/to/key.pem
   --memo="message"
   --expires=timestamp
-  --receipt_url=URL
+  --payment_url=URL
   --single_use
   --out=path_to_file
 

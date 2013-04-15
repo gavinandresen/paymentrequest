@@ -48,7 +48,7 @@ Payment requests are split into two messages to support future extensibility. Th
         optional uint64 expires = 4;
         optional bool single_use = 5 [default = true];
         optional string memo = 6;
-        optional string receipt_url = 7;
+        optional string payment_url = 7;
         optional bytes merchant_data = 8;
     }        
 
@@ -64,7 +64,7 @@ single_use: If true, these PaymentDetails should be used for only one payment. I
 
 memo: UTF-8 encoded, plain-text (no formatting) note that should be displayed to the customer, explaining what this PaymentRequest is for.
 
-receipt_url: Secure (usually https) location where a Payment message (see below) may be sent to obtain a PaymentACK.
+payment_url: Secure (usually https) location where a Payment message (see below) may be sent to obtain a PaymentACK.
 
 merchant_data : Arbitrary data that may be used by the merchant to identify the PaymentRequest. May be omitted if the merchant does not need to associate Payments with PaymentRequest or if they associate each PaymentRequest with a separate payment address.
 
@@ -121,12 +121,12 @@ memo : UTF-8 encoded, plain-text note from the customer to the merchant.
 If the customer authorizes payment, then the Bitcoin client:
 
 1. Creates and signs a transaction with one output sending the PaymentDetails.script
-2. If there is no PaymentDetails.receipt_url, then the transaction should be broadcast on the Bitcoin p2p network.
-3. Else send (POST if http/https) a Payment message to PaymentDetails.receipt_url and expect a PaymentACK in response.
+2. If there is no PaymentDetails.payment_url, then the transaction should be broadcast on the Bitcoin p2p network.
+3. Else send (POST if http/https) a Payment message to PaymentDetails.payment_url and expect a PaymentACK in response.
 
-Clients may handle errors communicating with the receipt_url server however they like, but should assume that if they cannot communicate at all with the server then the Payment should either be retried later or immediately rejected.
+Clients may handle errors communicating with the payment_url server however they like, but should assume that if they cannot communicate at all with the server then the Payment should either be retried later or immediately rejected.
 
-PaymentDetails.receipt_url must be secure against man-in-the-middle attacks that might alter Payment.refund_to (if using HTTP, it must be TLS-protected).
+PaymentDetails.payment_url must be secure against man-in-the-middle attacks that might alter Payment.refund_to (if using HTTP, it must be TLS-protected).
 
 A merchant receiving a Payment will determine whether or not the transactions satisfy conditions of payment, and, if and only if they do, broadcast the transactions on the Bitcoin p2p network. It must return a PaymentACK message to let the customer know whether payment was accepted or rejected.
 

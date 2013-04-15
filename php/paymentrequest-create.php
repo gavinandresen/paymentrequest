@@ -17,7 +17,7 @@ Optional:
  amount= : amount (in BTC) that needs to be paid
  memo= : message to user
  expires= : unix timestamp (integer) when this Request expires
- receipt_url= : URL where a Payment message should be sent
+ payment_url= : URL where a Payment message should be sent
  out= : file to write to (default: standard output)
  single_use= : 1 is single-use, 0 is multi-use 
 
@@ -73,7 +73,7 @@ for ($i = 1; $i < $argc; $i++) {
     case "expires":
         $details->setExpires($val);
         break;
-    case "receipt_url":
+    case "payment_url":
         $details->setReceiptUrl($val);
         break;
     case "out":

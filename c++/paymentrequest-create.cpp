@@ -9,7 +9,7 @@
 //  amount= : amount (in BTC) that needs to be paid
 //  memo= : message to user
 //  expires= : unix timestamp (integer) when this Request expires
-//  receipt_url= : URL where a Payment message should be sent
+//  payment_url= : URL where a Payment message should be sent
 //  out= : file to write to (default: standard output)
 //  single_use : if specified, this will be a single-use Request
 //
@@ -287,7 +287,7 @@ google::protobuf::uint64 BTC_to_satoshis(double btc)
 
 int main(int argc, char **argv) {
     std::list<string> expected = split("paytoaddress,amount,certificates,privatekey,memo,"
-                                       "expires,receipt_url,single_use,out", ",");
+                                       "expires,payment_url,single_use,out", ",");
 
     map<string,string> params;
     if (!parse_command_line(argc, argv, expected, params)) {
@@ -331,8 +331,8 @@ int main(int argc, char **argv) {
     }
     if (params.count("single_use"))
         details.set_single_use(true);
-    if (params.count("receipt_url"))
-        details.set_receipt_url(params["receipt_url"]);
+    if (params.count("payment_url"))
+        details.set_payment_url(params["payment_url"]);
 
     Output* out = details.add_outputs();
     if (params.count("amount") > 0)

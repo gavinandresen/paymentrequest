@@ -21,7 +21,7 @@ message PaymentDetails {
         optional uint64 expires = 4;
         optional bool single_use = 5 [default = true];
         optional string memo = 6;
-        optional string receipt_url = 7;
+        optional string payment_url = 7;
         optional bytes merchant_data = 8;
 }        
 message PaymentRequest {
