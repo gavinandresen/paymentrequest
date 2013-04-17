@@ -46,10 +46,9 @@ Payment requests are split into two messages to support future extensibility. Th
         repeated Output outputs = 2;
         required uint64 time = 3;
         optional uint64 expires = 4;
-        optional bool single_use = 5 [default = true];
-        optional string memo = 6;
-        optional string payment_url = 7;
-        optional bytes merchant_data = 8;
+        optional string memo = 5;
+        optional string payment_url = 6;
+        optional bytes merchant_data = 7;
     }        
 
 network: either "main" for payments on the production Bitcoin network, or "test" for payments on test network. If a client receives a PaymentRequest for a network it does not support it must reject the request.
@@ -59,8 +58,6 @@ outputs: one or more outputs where Bitcoins are to be sent. If the sum of output
 time: Unix timestamp (seconds since 1-Jan-1970) when the PaymentRequest was created.
 
 expires: Unix timestamp after which the PaymentRequest should be considered invalid.
-
-single_use: If true, these PaymentDetails should be used for only one payment. If false, it may be added to the user's address book and used repeatedly until it expires (e.g. for donations or a recurring payment).
 
 memo: UTF-8 encoded, plain-text (no formatting) note that should be displayed to the customer, explaining what this PaymentRequest is for.
 
@@ -120,15 +117,16 @@ memo : UTF-8 encoded, plain-text note from the customer to the merchant.
 
 If the customer authorizes payment, then the Bitcoin client:
 
-1. Creates and signs a transaction with one output sending the PaymentDetails.script
-2. If there is no PaymentDetails.payment_url, then the transaction should be broadcast on the Bitcoin p2p network.
-3. Else send (POST if http/https) a Payment message to PaymentDetails.payment_url and expect a PaymentACK in response.
+1. Creates and signs one or more transactions that satisfy (pay in full) PaymentDetails.outputs
+2. Broadcast the transactions on the Bitcoin p2p network.
+3. If PaymentDetails.payment_url is specified, POST a Payment message to that URL. The Payment message is serialized and sent as the body of the POST request.
+4. If a PaymentACK is received in response to the Payment message, PaymentACK.memo should be displayed to the user.
 
-Clients may handle errors communicating with the payment_url server however they like, but should assume that if they cannot communicate at all with the server then the Payment should either be retried later or immediately rejected.
+Errors communicating with the payment_url server should be communicated to the user.
 
 PaymentDetails.payment_url must be secure against man-in-the-middle attacks that might alter Payment.refund_to (if using HTTP, it must be TLS-protected).
 
-A merchant receiving a Payment will determine whether or not the transactions satisfy conditions of payment, and, if and only if they do, broadcast the transactions on the Bitcoin p2p network. It must return a PaymentACK message to let the customer know whether payment was accepted or rejected.
+A merchant receiving a Payment will determine whether or not the transactions satisfy conditions of payment, and, if and only if they do, broadcast the transactions on the Bitcoin p2p network. It must return a PaymentACK with a message letting the customer know the status of their transaction.
 
 PaymentACK
 ---------------------
@@ -137,21 +135,23 @@ PaymentACK
 
     message PaymentACK {
         required Payment payment = 1;
-        required bool accepted = 2;
-        optional string memo = 3;
+        optional string memo = 2;
     }
 
-accepted : true if the Payment is accepted and will be broadcast on the Bitcoin p2p network.
-
-memo : UTF-8 encoded note that should be displayed to the customer indicating that the transaction is complete.
+memo : UTF-8 encoded note that should be displayed to the customer giving the status of the transaction (e.g. "Payment of 1 BTC for eleven tribbles accepted for processing.")
 
 ::
 
 Upon receiving a PaymentACK, a Bitcoin client should display the PaymentACK.memo to the customer.
 
-The Bitcoin client must be prepared to handle the case of an evil merchant that returns accepted=false but broadcasts the transactions anyway.
-
 Once broadcast on the Bitcon p2p network, payments are like any other Bitcoin transaction and may be confirmed or not.
+
+A note on localization
+----------------------
+
+Merchants that support multiple languages should generate language-specific PaymentRequests, and either associate the language with the request or embed a language tag in the request's merchant_data. They should also generate a language-specific PaymentACK based on the original request.
+
+For example: A greek-speaking customer browsing the Greek version of a merchant's website clicks on a "Αγορά τώρα" link, which generates a PaymentRequest with merchant_data set to "lang=el&basketId=11252". The customer pays, their bitcoin client sends a Payment message, and the merchant's website responds with PaymentACK.message "σας ευχαριστούμε" .
 
 Certificates
 ============
@@ -164,7 +164,7 @@ The default PKI system is X.509 certificates (the same system used to authentica
         repeated bytes certificate = 1;
     }
 
-If pki_type is "x509+sha256", then the Payment message is hashed using the SHA256 algorithm to produce the message digest that is signed. If pki_type is "x509+sha1", then the SHA1 algorithm is used, but SHA1 should only be used if SHA256 is not available.
+If pki_type is "x509+sha256", then the Payment message is hashed using the SHA256 algorithm to produce the message digest that is signed. If pki_type is "x509+sha1", then the SHA1 algorithm is used.
 
 Each certificate is a DER [ITU.X690.1994] PKIX certificate value. The certificate containing the public key of the entity that digitally signed the PaymentRequest MUST be the first certificate. This MAY be followed by additional certificates, with each subsequent certificate being the one used to certify the previous one. The recipient MUST verify the certificate chain according to [RFC5280] and reject the PaymentRequest if any validation failure occurs.
 
