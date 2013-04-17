@@ -26,6 +26,7 @@ DONE: 2. Create a command-line tools for debugging/testing:
 
 3. Create a testing website that generates -testnet PaymentRequests signed
   by a valid certificate (allow user to choose paytoaddress/amount/etc).
+  DONE: https://bitcoincore.org/~gavin/createpaymentrequest.php
 
 4. Modify testing website so it will generate invalid PaymentRequests
   Conditions:
@@ -37,26 +38,11 @@ DONE: 2. Create a command-line tools for debugging/testing:
       Is that taken care of by the root CA ?
 
 5. Add to testing website to support a payment_url that generates PaymentACK messages:
-  + Add an id number to generated PaymentRequests, add to PaymentRequest.merchant_data
+  DONE: Add an id number to generated PaymentRequests, add to PaymentRequest.merchant_data
     and store them as they're generated
-  + Handle Payment messages submitted to payment_url:
+  DONE: Handle Payment messages submitted to payment_url:
     get id from merchant_data, lookup associated PaymentRequest
-    if already paid: goto Something Wrong
-    Check if Payment.transactions satisifes the PaymentRequest:
-     if yes, submit raw transactions via a running bitcoind, return PaymentACK.accepted=true
-    Something Wrong: return PaymentAck.accepted=false
 
-  TEST: hand-generated Payments that do/do not satisy a PaymentRequest.
-
-6. Add "always accept" URL to testing website:
-  + Submits transactions to local, running -testnet bitcoind
-  + If transactions OK: return PaymentACK.accepted=true
-  + Else: return PaymentAck.accepted=false
-
-
-7. Maybe more features for paymentrequest-create :
-  + Password-protected .pem private key files ?
-    (do web servers allow? How do they store the password?)
 
 CLIENT SIDE
 
@@ -66,10 +52,10 @@ CLIENT SIDE
 2. Teach Bitcoin-Qt to handle application/x-bitcoin-payment-request MIME type:
   DONE Add protobuf library as dependency to .pro file, doc/build-*.txt, gitian dependencies, etc.
   DONE Use system root certs, but allow overriding with own list.
-  + Display Send dialog with info from PaymentRequest
+  DONE Display Send dialog with info from PaymentRequest
+    (displayed in Send tab)
 
- TEST: feed valid/invalid PaymentRequests via command line
- DONE: Unit tests for valid/invalid certs
+  DONE: Unit tests for valid/invalid certs
 
 3. Modify installers to:
   register Bitcoin-Qt as x-bitcoin-payment-request handler
@@ -82,12 +68,9 @@ CLIENT SIDE
 4. Teach Bitcoin-Qt the extended bitcoin: URI syntax:
   DONE if request= given, fetch payment-request from URL
 
-  TEST: OSX/Linux/Windows
+ TEST: OSX/Linux/Windows
 
 5. Teach Bitcoin-Qt to create and submit Payment messages when given
   a PaymentRequest with a payment_url:
-  + Do not broadcast if payment_url is specified
-  + Code to POST to a TLS-protected url (let user know if ERROR)
-  + Code to parse response and show PaymentACK.memo
-
- TEST: success and failure cases.
+  DONE Code to POST to a TLS-protected url (let user know if ERROR)
+  DONE Code to parse response and show PaymentACK.memo
