@@ -11,7 +11,6 @@
 //  expires= : unix timestamp (integer) when this Request expires
 //  payment_url= : URL where a Payment message should be sent
 //  out= : file to write to (default: standard output)
-//  single_use : if specified, this will be a single-use Request
 //
 
 // Apple has deprecated OpenSSL in latest MacOS, shut up compiler warnings about it.
@@ -287,7 +286,7 @@ google::protobuf::uint64 BTC_to_satoshis(double btc)
 
 int main(int argc, char **argv) {
     std::list<string> expected = split("paytoaddress,amount,certificates,privatekey,memo,"
-                                       "expires,payment_url,single_use,out", ",");
+                                       "expires,payment_url,out", ",");
 
     map<string,string> params;
     if (!parse_command_line(argc, argv, expected, params)) {
@@ -329,8 +328,6 @@ int main(int argc, char **argv) {
         else
             std::cerr << "Invalid expires, ignoring: " << params["expires"] << "\n";
     }
-    if (params.count("single_use"))
-        details.set_single_use(true);
     if (params.count("payment_url"))
         details.set_payment_url(params["payment_url"]);
 

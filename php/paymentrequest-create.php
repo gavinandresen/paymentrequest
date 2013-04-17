@@ -19,7 +19,6 @@ Optional:
  expires= : unix timestamp (integer) when this Request expires
  payment_url= : URL where a Payment message should be sent
  out= : file to write to (default: standard output)
- single_use= : 1 is single-use, 0 is multi-use 
 
 USAGE;
 
@@ -78,9 +77,6 @@ for ($i = 1; $i < $argc; $i++) {
         break;
     case "out":
         $outfile = $val;
-        break;
-    case "single_use":
-        $details->setSingleUse($val ? true : false);
         break;
     default:
         echo "Unrecognized argument: ".$argv[$i]."\n";

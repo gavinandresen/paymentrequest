@@ -13,7 +13,6 @@ Arguments:
   --memo="message"
   --expires=timestamp
   --payment_url=URL
-  --single_use
   --out=path_to_file
 
 --certificates is the certificate chain, farthest-from-root first.
