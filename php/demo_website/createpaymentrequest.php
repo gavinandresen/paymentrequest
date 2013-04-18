@@ -100,20 +100,28 @@ function createPaymentRequest($params)
 
     // Signed?
     if ($params['merchant'] != "None") {
+        $certK = $params['merchant'] . "certificate";
+        $keyK = $params['merchant'] . "key";
 
-        // TODO: memcache serialized $certChain to avoid constant lookups:
-        $certChain = new \payments\X509Certificates();
-        // TODO: more than one .crt...
-        $leafCert = file_get_contents("/home/gavin/.certs/bitcoincore.crt");
-        $certs = fetch_chain($leafCert);
-        foreach ($certs as $cert) {
-            $certChain->addCertificate($cert);
+	$certChain = new \payments\X509Certificates();
+	$cachedCertChain = $memcache->get($certK);
+	if ($cachedCertChain === FALSE) {
+            $leafCert = file_get_contents("/home/gavin/.certs/".$params['merchant'].".crt");
+            $certs = fetch_chain($leafCert);
+            foreach ($certs as $cert) {
+                $certChain->addCertificate($cert);
+            }
+	    $cachedCertChain = $certChain->serialize($codec);
+	    $memcache->set($certK, $cachedCertChain);
+        }
+	else {
+	    $certChain->parse($cachedCertChain);
         }
 
         $paymentRequest->setPkiType("x509+sha1");
         $paymentRequest->setPkiData($certChain->serialize($codec));
 
-        $priv_key = file_get_contents("/home/gavin/.certs/bitcoincore.key");
+        $priv_key = file_get_contents("/home/gavin/.certs/".$params['merchant'].".key");
         $pkeyid = openssl_get_privatekey($priv_key);
 
         $paymentRequest->setSignature("");
@@ -179,7 +187,7 @@ if (isset($request['submit'])) {
 
     if (count($formErrors) == 0) {
         $info = createPaymentRequest($request);
-        $html = preg_replace('/<p class="result">[^<]*/', '<p class="result">'.$info, $html);
+        $html = preg_replace('/<span class="result">[^<]*/', '<span class="result">'.$info, $html);
 
         // Normally there would be code here to process the form
         // and redirect to a thank you page...

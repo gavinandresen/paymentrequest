@@ -17,7 +17,8 @@
 <tr>
  <td align="right"><label for="merchant">Merchant:</label></td>
  <td colspan="3"><select name="merchant" id="merchant">
-  <option>bitcoincore.com</option>
+  <option value="bitcoincore">bitcoincore.org</option>
+  <option value="gavinemail">gavinandresen@gmail.com</option>
   <option>None</option></select>
  </td>
 </tr>
@@ -70,8 +71,9 @@
 
 </table>
 </form>
-
-<p class="result"></p>
+<p>If 'Produce bitcoin: URI' is checked, the link will appear here: <span class="result"></span><br/>
+If you change the form, you must click the Create Payment Request button to generate a new URI.
+</p>
 
 </div>
 
