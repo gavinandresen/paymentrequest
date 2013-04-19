@@ -1,25 +1,16 @@
 Code implementing a simple payment protocol for Bitcoin (PaymentRequest/etc).
 
-See https://gist.github.com/4120476
+See https://en.bitcoin.it/wiki/BIP_0070
 
-Dependencies:
-  OpenSSL (library and openssl command-line tool)
-  Google Protocol Buffers (library and protoc command-line compiler)
+Files here:
 
-Debian/Ubuntu:
-  apt-get install openssl protobuf
-OSX MacPorts:
-  port install openssl protobuf
+paymentrequest.proto : Google protocol buffer definition of messages
 
-To compile:
-  make
+Subdirectories here:
 
-The Makefile will create a "certificate authority in a box" in ca_in_a_box/ and
-compile command-line tools:
+c++ : command-line utilities for creating/validating PaymentRequests
 
-paymentrequest-create  # Prototype code: create a PaymentRequest message
-paymentrequest-verify  # Prototype code: verify a PaymentRequest message
+php : php code and a demo website for creating/validating PaymentRequests
 
-
-Example usage:
-  paymentrequest-create paytoaddress=1BTCorgHwCg6u2YSAWKgS17qUad6kHmtQW memo="Just Testing" amount=11.0 | paymentrequest-dump
+ca_in_a_box : "certificate authority in a box", used to generate
+  certificates and certificate chains for testing.

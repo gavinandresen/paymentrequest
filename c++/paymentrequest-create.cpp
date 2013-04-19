@@ -37,7 +37,7 @@
 #include <openssl/x509_vfy.h>
 #include <openssl/evp.h>
 
-#include "paymentrequest.pb.h";
+#include "paymentrequest.pb.h"
 #include <google/protobuf/io/tokenizer.h>  // For string-to-uint64 conversion
 #include "util.h"
 
@@ -352,25 +352,28 @@ int main(int argc, char **argv) {
 
     // Certificate chain:
     X509Certificates certChain;
-    X509 *first_cert = NULL;
-    X509 *last_cert = NULL;
-    EVP_PKEY *pubkey = NULL;
     std::list<string> certFiles = split(params["certificates"], ",");
+    std::vector<X509*> certs;
     for (std::list<string>::iterator it = certFiles.begin(); it != certFiles.end(); it++) {
         X509 *cert = parse_pem_cert(load_file(*it));
+        if (cert == NULL) {
+            fprintf(stderr, "Could not read %s\n", it->c_str());
+            continue;
+        }
+        certs.push_back(cert);
         certChain.add_certificate(x509_to_der(cert));
-        if (first_cert == NULL) {
-            first_cert = cert; // Don't free this yet, need pubkey to stay valid
-            pubkey = X509_get_pubkey(cert);
-        }
-        else {
-            X509_free(cert);
-        }
-        last_cert = cert;
     }
 
+    if (certs.empty()) {
+        fprintf(stderr, "Could not load any certificates\n");
+        exit(1);
+    }
+
+    // Public key is first certificate:
+    EVP_PKEY *pubkey = X509_get_pubkey(certs.front());
+
     // Fetch any missing intermediate certificates, if we can:
-    fetchParentCerts(certChain, last_cert);
+    fetchParentCerts(certChain, certs.back());
 
     string certChainBytes;
     certChain.SerializeToString(&certChainBytes);
@@ -410,7 +413,10 @@ int main(int argc, char **argv) {
     }
     EVP_MD_CTX_destroy(ctx);
     EVP_PKEY_free(pubkey);
-    X509_free(first_cert);
+    for (std::vector<X509*>::iterator it = certs.begin(); it != certs.end(); it++) {
+        X509_free(*it);
+    }
+    certs.clear();
 
     // We got here, so the signature is self-consistent.
     request.set_signature(signature, actual_signature_len);

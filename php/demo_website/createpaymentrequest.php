@@ -66,7 +66,7 @@ function createPaymentRequest($params)
         if (!empty($params[$field])) {
             $output = new \payments\Output();
             $r = address_to_script($params["address".$i]);
-            if ($r[0]) $testnet = true;
+            $testnet = $r[0];
             $output->setScript($r[1]);
 	    $output->setAmount($params["amount".$i]*1.0e8);
 	    $totalAmount += $params["amount".$i];
@@ -183,6 +183,11 @@ $validationData['address3'] = array('type' => 'btcaddress');
 $validationData['amount3'] = array('type' => 'btcamount');
 
 if (isset($request['submit'])) {
+    // For debugging Tor connections: replace $CLIENT_IP
+    // in memo/ACK_message with client's IP address:
+    $request['memo'] = str_replace('$CLIENT_IP', $_SERVER['REMOTE_ADDR'], $request['memo']);
+    $request['ACK_message'] = str_replace('$CLIENT_IP', $_SERVER['REMOTE_ADDR'], $request['ACK_message']);
+
     $formErrors = validateForm($request, $validationData);
 
     if (count($formErrors) == 0) {
