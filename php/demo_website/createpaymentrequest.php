@@ -61,6 +61,7 @@ function createPaymentRequest($params)
 
     $testnet = false;
     $totalAmount = 0;
+    $nAddresses = 0;
     for ($i = 1; $i <= 3; $i++) {
         $field = "address".$i;
         if (!empty($params[$field])) {
@@ -70,6 +71,7 @@ function createPaymentRequest($params)
             $output->setScript($r[1]);
 	    $output->setAmount($params["amount".$i]*1.0e8);
 	    $totalAmount += $params["amount".$i];
+            $nAddresses += 1;
 
             $details->addOutputs($output);
         }
@@ -136,12 +138,8 @@ function createPaymentRequest($params)
 
     $data = $paymentRequest->serialize($codec);
 
-    if (isset($params['produce_uri']))
-    {
+    if (isset($params['produce_uri'])) {
         $urlParams = array();
-
-	if ($totalAmount > 0)
-	  $urlParams['amount'] = $totalAmount;
 
 	$hash = hash('ripemd128', $data);
 	$memcache->set($hash, $data, FALSE, 60*60*24); /* cache for 24 hours */
@@ -149,12 +147,19 @@ function createPaymentRequest($params)
 	// f.php is fetch payment request from memcache:
 	$urlParams['request'] = AbsoluteURL('')."f.php?h=".$hash;
 
-        $url = AddArgsToURL("bitcoin:".$params["address1"], $urlParams);
-	
+	if ($nAddresses == 1 && $totalAmount > 0) {
+	    $urlParams['amount'] = $totalAmount;
+        }
+        if ($nAddresses == 1) {
+            $url = AddArgsToURL("bitcoin:".$params["address1"], $urlParams);
+        }
+        else {
+            $url = AddArgsToURL("bitcoin:", $urlParams);
+	}
         return MakeAnchor("CLICK TO PAY", $url);
     }
 
-    header('Content-Type: application/x-bitcoinpaymentrequest');
+    header('Content-Type: application/bitcoin-paymentrequest');
     $filename = "r".(string)time().".bitcoinpaymentrequest";
     header('Content-Disposition: inline; filename='.$filename);
     header('Content-Transfer-Encoding: binary');
@@ -183,11 +188,6 @@ $validationData['address3'] = array('type' => 'btcaddress');
 $validationData['amount3'] = array('type' => 'btcamount');
 
 if (isset($request['submit'])) {
-    // For debugging Tor connections: replace $CLIENT_IP
-    // in memo/ACK_message with client's IP address:
-    $request['memo'] = str_replace('$CLIENT_IP', $_SERVER['REMOTE_ADDR'], $request['memo']);
-    $request['ACK_message'] = str_replace('$CLIENT_IP', $_SERVER['REMOTE_ADDR'], $request['ACK_message']);
-
     $formErrors = validateForm($request, $validationData);
 
     if (count($formErrors) == 0) {

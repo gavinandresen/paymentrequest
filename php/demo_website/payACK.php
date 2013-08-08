@@ -26,6 +26,10 @@ if ($message === FALSE) {
     exit(0);
 }
 
+// For debugging Tor connections: replace $CLIENT_IP
+// in ACK_message with client's IP address:
+$message = str_replace('$CLIENT_IP', $_SERVER['REMOTE_ADDR'], $message);
+
 $paymentACK = new \payments\PaymentACK();
 $paymentACK->setPayment($payment);
 $paymentACK->setMemo($message);
