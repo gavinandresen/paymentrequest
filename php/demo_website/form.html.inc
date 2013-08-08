@@ -74,7 +74,11 @@
 <p>If 'Produce bitcoin: URI' is checked, the link will appear here: <span class="result"></span><br/>
 If you change the form, you must click the Create Payment Request button to generate a new URI.
 </p>
-
+<h1>Static URIs for testing</h1>
+<p>Old-fashioned bitcoin: URI: <a href="bitcoin:mrhz5ZgSF3C1BSdyCKt3gEdhKoRL5BNfJV?amount=0.01&label=Faucet">Send to TP Faucet</a>
+</p>
+<p><a href="bitcoin:mrhz5ZgSF3C1BSdyCKt3gEdhKoRL5BNfJV?request=https%3A%2F%2Fbitcoincore.org%2F%7Egavin%2Ff.php%3Fh%3D89ea2e87e5b36a000000000000000000&amount=0.1">Invalid request URI</a>
+</p>
 </div>
 
 <script src="http://code.jquery.com/jquery.js"></script>
