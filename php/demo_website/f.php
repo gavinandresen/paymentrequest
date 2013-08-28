@@ -20,7 +20,7 @@ if ($data === FALSE) {
     exit(0);
 }
 
-header('Content-Type: application/x-bitcoinpaymentrequest');
+header('Content-Type: application/bitcoin-paymentrequest');
 $filename = "r".(string)time().".bitcoinpaymentrequest";
 header('Content-Disposition: inline; filename='.$filename);
 header('Content-Transfer-Encoding: binary');

@@ -41,7 +41,7 @@ $paymentACK->setMemo($message);
  * For this demo, we just echo back the message.
  */
 
-header('Content-Type: application/x-bitcoinpaymentACK');
+header('Content-Type: application/bitcoin-paymentack');
 $filename = "r".(string)time().".bitcoinpaymentACK";
 header('Content-Disposition: inline; filename='.$filename);
 header('Content-Transfer-Encoding: binary');

@@ -141,7 +141,7 @@ exit(0);
 
 // A web application serving up a payment request would do something like this:
 
-header('Content-Type: application/x-bitcoin-payment-request');
+header('Content-Type: application/bitcoin-paymentrequest');
 $filename = "r".(string)time().".bitcoinpaymentrequest"; // ... or any unique filename
 header('Content-Disposition: inline; filename='.$filename);
 header('Content-Transfer-Encoding: binary');
