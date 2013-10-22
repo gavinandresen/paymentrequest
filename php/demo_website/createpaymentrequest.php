@@ -42,7 +42,7 @@ function mySecret($memcache)
     return $secret;
 }
 
-function createPaymentRequest($params)
+function createPaymentRequest($params, &$formErrors)
 {
     $memcache = new Memcache;
     $memcache->connect('localhost', 11211) or die ("Could not connect to memcache");
@@ -74,6 +74,14 @@ function createPaymentRequest($params)
             $nAddresses += 1;
 
             $details->addOutputs($output);
+
+            // Testnet only, we don't want anybody to be able to create 
+            // real-money payment requests
+            // from bitcoincore.org/gavinandresen@gmail.com:
+            if (!$testnet && $params['merchant'] != "None") {
+                $formErrors[$field] = "Testnet-only addresses, please";
+                return NULL;
+            }
         }
     }
     if ($testnet) {
@@ -191,15 +199,14 @@ if (isset($request['submit'])) {
     $formErrors = validateForm($request, $validationData);
 
     if (count($formErrors) == 0) {
-        $info = createPaymentRequest($request);
+        $info = createPaymentRequest($request, $formErrors);
+    }
+    if (count($formErrors) == 0) {
         $html = preg_replace('/<span class="result">[^<]*/', '<span class="result">'.$info, $html);
 
         // Normally there would be code here to process the form
         // and redirect to a thank you page...
         // ... but for this example, we just always re-display the form.
-//    $info = "No errors; got these values:".
-//      nl2br(htmlspecialchars(print_r($request, 1)));
-//    $html = preg_replace('/<body>/', "<body><p>$info</p>", $html);
     }
 }
 else {
