@@ -42,6 +42,69 @@ function mySecret($memcache)
     return $secret;
 }
 
+function validate_pubkey($hex)
+{
+    $d = pack("H*", $hex);
+    if (strlen($d) < 33) {
+        return false;
+    }
+    if ($d[0] == "\x04") {
+        // Uncompressed pubkey, must be 1+64 bytes:
+        if (strlen($d) != 1+64) return false;
+        return d;
+    }
+    else if ($d[0] == "\x02" || $d[0] == "\x03") {
+        // Compressed pubkey, must be 1+32 bytes:
+        if (strlen($d) != 1+32) return false;
+        return $d;
+    }
+    return false;
+}
+
+function pubkeys_to_script($hex)
+{
+    $keys = explode(",", $hex);
+
+    $script = false;
+
+    switch(count($keys)) {
+        case 1:
+            $k = validate_pubkey($keys[0]);
+            if ($k === false) return false;
+
+            // <push-pubkey-len-bytes><pubkey> OP_CHECKSIG
+            $script = chr(strlen($k)) . $k . "\xac"; 
+            break;
+        case 2:
+            $k1 = validate_pubkey($keys[0]);
+            $k2 = validate_pubkey($keys[1]);
+            if ($k1 === false || $k2 === false) return false;
+
+            // OP_2 <k1> <k2> OP_2 OP_CHECKMULTISIG
+            $script = "\x52";
+            $script .= chr(strlen($k1)) . $k1;
+            $script .= chr(strlen($k2)) . $k2;
+            $script .= "\x52";
+            $script .= "\xae";
+            break;
+        case 3:
+            $k1 = validate_pubkey($keys[0]);
+            $k2 = validate_pubkey($keys[1]);
+            $k3 = validate_pubkey($keys[2]);
+            if ($k1 === false || $k2 === false || $k3 === false) return false;
+
+            // OP_3 <k1> <k2> <k3> OP_3 OP_CHECKMULTISIG
+            $script = "\x53";
+            $script .= chr(strlen($k1)) . $k1;
+            $script .= chr(strlen($k2)) . $k2;
+            $script .= chr(strlen($k3)) . $k3;
+            $script .= "\x53";
+            $script .= "\xae";
+            break;
+    }
+    return $script;
+}
+
 function createPaymentRequest($params, &$formErrors)
 {
     $memcache = new Memcache;
@@ -66,7 +129,15 @@ function createPaymentRequest($params, &$formErrors)
         $field = "address".$i;
         if (!empty($params[$field])) {
             $output = new \payments\Output();
-            $r = address_to_script($params["address".$i]);
+            $r = address_to_script($params[$field]);
+            if ($r === false) {
+                $script = pubkeys_to_script($params[$field]);
+                if ($script === false) {
+                    $formErrors[$field] = "Invalid address/pubkey";
+                    continue;
+                }
+                $r = array(true, $script);
+            }
             $testnet = $r[0];
             $output->setScript($r[1]);
 	    $output->setAmount($params["amount".$i]*1.0e8);
@@ -188,11 +259,11 @@ ob_end_clean();
 
 $request = (get_magic_quotes_gpc() ? array_map('stripslashes', $_REQUEST) : $_REQUEST);
 
-$validationData['address1'] = array('isRequired', 'type' => 'btcaddress');
+$validationData['address1'] = array('isRequired', 'type' => 'btcdestination');
 $validationData['amount1'] = array('isRequired', 'type' => 'btcamount');
-$validationData['address2'] = array('type' => 'btcaddress');
+$validationData['address2'] = array('type' => 'btcdestination');
 $validationData['amount2'] = array('type' => 'btcamount');
-$validationData['address3'] = array('type' => 'btcaddress');
+$validationData['address3'] = array('type' => 'btcdestination');
 $validationData['amount3'] = array('type' => 'btcamount');
 
 if (isset($request['submit'])) {
