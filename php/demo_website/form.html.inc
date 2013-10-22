@@ -40,7 +40,7 @@ be from him!
 </tr>
 <p>Addresses above may be base58-encoded addresses (pay-to-pubkey-hash or pay-to-script-hash).
 Or a hex-encoded public key (pay-to-pubkey : pubkey OP_CHECKSIG).
-Or two or three hex-encoded public keys (will generate a payment request paying
+Or two or three hex-encoded public keys separated by commas (will generate a payment request paying
 to a 2-of-2 or 3-of-3 CHECKMULTISIG). Use the 'validateaddress' RPC call to get hex public
 keys for testing.
 </p>
