@@ -38,12 +38,6 @@ be from him!
  <td align="right"><label for="address3">:</label></td><td><input name="address3" size="36"/></td>
  <td align="right"><label for="amount3">:</label></td><td><input name="amount3" id="amount3" size="6"/></td>
 </tr>
-<p>Addresses above may be base58-encoded addresses (pay-to-pubkey-hash or pay-to-script-hash).
-Or a hex-encoded public key (pay-to-pubkey : pubkey OP_CHECKSIG).
-Or two or three hex-encoded public keys separated by commas (will generate a payment request paying
-to a 2-of-2 or 3-of-3 CHECKMULTISIG). Use the 'validateaddress' RPC call to get hex public
-keys for testing.
-</p>
 <tr>
  <td align="right"><label for="time">Time:</label></td>
  <td>
@@ -80,6 +74,13 @@ keys for testing.
 
 </table>
 </form>
+<p>Addresses above may be base58-encoded addresses (pay-to-pubkey-hash or pay-to-script-hash).
+Or a hex-encoded public key (pay-to-pubkey : pubkey OP_CHECKSIG).
+Or two or three hex-encoded public keys separated by commas (will generate a payment request paying
+to a 2-of-2 or 3-of-3 CHECKMULTISIG). Use the 'validateaddress' RPC call to get hex public
+keys for testing.
+</p>
+
 <p>If 'Produce bitcoin: URI' is checked, the link will appear here: <span class="result"></span><br/>
 If you change the form, you must click the Create Payment Request button to generate a new URI.
 </p>
