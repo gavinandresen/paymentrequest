@@ -224,7 +224,7 @@ function createPaymentRequest($params, &$formErrors)
 	$memcache->set($hash, $data, FALSE, 60*60*24); /* cache for 24 hours */
 
 	// f.php is fetch payment request from memcache:
-	$urlParams['request'] = AbsoluteURL('')."f.php?h=".$hash;
+	$urlParams['r'] = AbsoluteURL('')."f.php?h=".$hash;
 
 	if ($nAddresses == 1 && $totalAmount > 0) {
 	    $urlParams['amount'] = $totalAmount;

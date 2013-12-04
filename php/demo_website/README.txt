@@ -15,7 +15,7 @@ What is here:
 createpaymentrequest.php : Main page: logic for creating a PaymentRequest
 form.html.inc : HTML for createpaymentrequest.php
 
-If a bitcoin: URI is produced, then the request= parameter will point to:
+If a bitcoin: URI is produced, then the r= parameter will point to:
 f.php : just serves up a generated PaymentRequest from memcache
 
 If a payment_url is part of the payment request, then it is set to:
