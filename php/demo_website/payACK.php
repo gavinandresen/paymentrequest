@@ -40,6 +40,8 @@ $paymentACK->setMemo($message);
  * they were valid payments, etc.
  * For this demo, we just echo back the message.
  */
+$codec = new \DrSlump\Protobuf\Codec\Binary();
+$response = $paymentACK->serialize($codec);
 
 header('Content-Type: application/bitcoin-paymentack');
 $filename = "r".(string)time().".bitcoinpaymentACK";
@@ -48,11 +50,8 @@ header('Content-Transfer-Encoding: binary');
 header('Expires: 0');
 header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
 header('Pragma: public');
-header('Content-Length: ' . (string)strlen($data));
+header('Content-Length: ' . (string)strlen($response));
 
-$codec = new \DrSlump\Protobuf\Codec\Binary();
-echo $paymentACK->serialize($codec);
+echo $response;
 
 exit(0);
-
-?>
