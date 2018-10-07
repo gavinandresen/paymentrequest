@@ -133,12 +133,12 @@ int main(int argc, char **argv) {
     request.SerializeToString(&data_to_verify);
     request.set_signature(signature);
 
-    EVP_MD_CTX ctx;
+    EVP_MD_CTX* ctx;
     EVP_PKEY *pubkey = X509_get_pubkey(signing_cert);
-    EVP_MD_CTX_init(&ctx);
-    if (!EVP_VerifyInit_ex(&ctx, digestAlgorithm, NULL) ||
-        !EVP_VerifyUpdate(&ctx, data_to_verify.data(), data_to_verify.size()) ||
-        !EVP_VerifyFinal(&ctx, (const unsigned char*)signature.data(), signature.size(), pubkey)) {
+    ctx = EVP_MD_CTX_new();
+    if (!EVP_VerifyInit_ex(ctx, digestAlgorithm, NULL) ||
+        !EVP_VerifyUpdate(ctx, data_to_verify.data(), data_to_verify.size()) ||
+        !EVP_VerifyFinal(ctx, (const unsigned char*)signature.data(), signature.size(), pubkey)) {
 
         printf("Bad signature, invalid PaymentRequest.\n");
     }

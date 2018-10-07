@@ -178,16 +178,16 @@ bool decode_base58(const string& btcaddress, unsigned char& version, string& has
     unsigned char decoded[25];
 
     size_t nBytes = 0;
-    BIGNUM bn58, bn, bnChar;
+    BIGNUM *bn58, *bn, *bnChar;
     BN_CTX *ctx;
 
     ctx = BN_CTX_new();
-    BN_init(&bn58);
-    BN_init(&bn);
-    BN_init(&bnChar);
+    bn58 = BN_new();
+    bn   = BN_new();
+    bnChar = BN_new();
 
-    BN_set_word(&bn58, 58);
-    BN_set_word(&bn, 0);
+    BN_set_word(bn58, 58);
+    BN_set_word(bn, 0);
 
     for (unsigned int i = 0; i < btcaddress.length(); i++) {
         const char *p1 = strchr(base58_chars, btcaddress[i]);
@@ -195,23 +195,23 @@ bool decode_base58(const string& btcaddress, unsigned char& version, string& has
             goto out;
         }
 
-        BN_set_word(&bnChar, p1 - base58_chars);
+        BN_set_word(bnChar, p1 - base58_chars);
 
-        assert(BN_mul(&bn, &bn, &bn58, ctx));
-        assert(BN_add(&bn, &bn, &bnChar));
+        assert(BN_mul(bn, bn, bn58, ctx));
+        assert(BN_add(bn, bn, bnChar));
     }
 
-    nBytes = BN_num_bytes(&bn);
+    nBytes = BN_num_bytes(bn);
     if (nBytes == 0 || nBytes > 25)
         return false;
 
     std::fill(decoded, decoded+25, (unsigned char)0);
-    BN_bn2bin(&bn, &decoded[25-nBytes]);
+    BN_bn2bin(bn, &decoded[25-nBytes]);
 
 out:
-    BN_clear_free(&bn58);
-    BN_clear_free(&bn);
-    BN_clear_free(&bnChar);
+    BN_clear_free(bn58);
+    BN_clear_free(bn);
+    BN_clear_free(bnChar);
     BN_CTX_free(ctx);
 
     version = decoded[0];
